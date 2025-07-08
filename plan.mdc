@@ -1,0 +1,572 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## 🧾 Custom POS System Development Roadmap
+
+### 🎯 System Overview
+
+A custom POS system designed for:
+
+* Convenience stores
+* Liquor shops
+* Smoke shops
+
+**Core Capabilities:**
+
+* Barcode inventory management
+* OCR invoice scanning for reorder suggestions
+* Receipt and label printing (ESC/POS compatible)
+* Stripe/Square payment integration
+* Compatibility with existing barcode scanners and printers
+
+---
+
+### 🧱 Tech Stack
+
+| Layer                 | Tech                          | Purpose                                      |
+| --------------------- | ----------------------------- | -------------------------------------------- |
+| **Frontend (POS)**    | React + Electron              | Desktop UI with hardware integration         |
+| **Frontend (Admin)**  | Next.js                       | Web dashboard for inventory/sales management |
+| **Frontend (Mobile)** | React Native                  | OCR scanning of invoices                     |
+| **Backend**           | Node.js + Express             | REST API for inventory/sales/ocr/payments    |
+| **Database**          | PostgreSQL or SQLite          | Store product, sales, invoice data           |
+| **OCR Service**       | Google Cloud Vision API       | Extract text from uploaded invoices          |
+| **Payments**          | Stripe Terminal or Square SDK | Card reader integration                      |
+| **Printing**          | node-escpos, Star/Epson SDKs  | Receipt and label printing support           |
+
+---
+
+### 🗺️ Development Phases
+
+#### ✅ Phase 1 — Backend API (COMPLETED)
+
+**Goal:** Production-ready API with comprehensive testing
+
+**Time Invested:** 5.25 hours across 4 sessions
+**Status:** 100% Complete ✅
+
+**Major Achievements:**
+- ✅ **Production-ready backend API** with comprehensive endpoint coverage
+- ✅ **Robust database schema** with proper relationships and constraints  
+- ✅ **Complete test suite** with 85 tests and 72% production code coverage
+- ✅ **Production-grade architecture** with dependency injection
+- ✅ **Transaction integrity** and proper error handling
+- ✅ **Inventory management** with audit trails
+- ✅ **Sales recording** with automatic stock updates
+
+**API Endpoints Implemented:**
+- Products: GET, POST, PUT, DELETE with barcode lookup
+- Sales: Recording, retrieval, and transaction management
+- Inventory: Stock adjustments, low stock alerts, audit trail
+- Health: System status and database connectivity checks
+
+**Test Coverage:**
+- Statement Coverage: 72.01%
+- Branch Coverage: 75.32%
+- Function Coverage: 90.47%
+- 85 tests covering all endpoints and edge cases
+
+---
+
+#### 🟩 Phase 2 — Electron POS Desktop App (IN PROGRESS)
+
+**Goal:** Touch-friendly POS terminal with barcode scanning and receipt printing
+
+**Estimated Time:** 12-15 hours
+**Status:** Starting...
+
+##### 📋 **App Foundation Setup** (2-3 hours)
+- [ ] **Initialize Electron + React project** (45min)
+  - Set up Create React App with TypeScript
+  - Configure Electron main process
+  - Set up hot reload for development
+- [ ] **Configure app window and security** (30min)
+  - Set window size (1024x768 for touch screens)
+  - Disable menu bar for kiosk mode
+  - Configure security settings (disable node integration)
+- [ ] **Set up basic routing** (30min)
+  - Install react-router-dom
+  - Create basic route structure
+  - Set up navigation between screens
+- [ ] **Add CSS framework and theme** (30min)
+  - Install Tailwind CSS
+  - Configure POS-specific theme (large buttons, high contrast)
+  - Create responsive layout utilities
+- [ ] **Set up state management** (30min)
+  - Configure React Context for global state
+  - Create initial state structure (cart, products, user)
+  - Set up API client configuration
+
+##### 🎨 **UI Components Library** (2-3 hours)
+- [ ] **Create base button components** (30min)
+  - Large touch-friendly buttons
+  - Primary, secondary, danger variants
+  - Loading and disabled states
+- [ ] **Build input components** (30min)
+  - Number input with large touch targets
+  - Search input with barcode icon
+  - Quantity selector with +/- buttons
+- [ ] **Create product card component** (30min)
+  - Display product image, name, price
+  - Stock level indicator
+  - Add to cart button
+- [ ] **Build modal components** (30min)
+  - Confirmation dialogs
+  - Product details modal
+  - Payment processing modal
+- [ ] **Create layout components** (30min)
+  - Header with store name and user info
+  - Sidebar navigation
+  - Main content area with responsive grid
+- [ ] **Add loading and error states** (30min)
+  - Loading spinners and skeletons
+  - Error message components
+  - Retry functionality
+
+##### 🔌 **API Integration Layer** (1-2 hours)
+- [ ] **Set up axios client** (20min)
+  - Configure base URL and headers
+  - Set up request/response interceptors
+  - Handle authentication tokens
+- [ ] **Create products API service** (20min)
+  - Get all products
+  - Get product by ID
+  - Get product by barcode
+  - Search products
+- [ ] **Create sales API service** (20min)
+  - Create new sale
+  - Get sales history
+  - Get sale by ID
+- [ ] **Create inventory API service** (20min)
+  - Get low stock products
+  - Adjust inventory
+  - Get adjustment history
+- [ ] **Add error handling and retry logic** (20min)
+  - Network error handling
+  - API error responses
+  - Automatic retry for failed requests
+- [ ] **Create API response types** (20min)
+  - TypeScript interfaces for all API responses
+  - Validation schemas
+  - Error response types
+
+##### 🛍️ **Shopping Cart System** (2-3 hours)
+- [ ] **Create cart context and reducer** (45min)
+  - Add item to cart
+  - Remove item from cart
+  - Update item quantity
+  - Clear cart
+- [ ] **Build cart display component** (30min)
+  - Line items with product details
+  - Quantity adjustment controls
+  - Remove item functionality
+- [ ] **Create cart summary component** (30min)
+  - Subtotal calculation
+  - Tax calculation by product
+  - Total amount display
+- [ ] **Add cart persistence** (30min)
+  - Save cart to localStorage
+  - Restore cart on app restart
+  - Clear cart after successful sale
+- [ ] **Implement cart validations** (30min)
+  - Stock level validation
+  - Minimum quantity validation
+  - Price validation
+- [ ] **Create cart keyboard shortcuts** (15min)
+  - Delete key to remove selected item
+  - +/- keys for quantity adjustment
+  - Enter to proceed to checkout
+
+##### 📦 **Product Management Interface** (2-3 hours)
+- [ ] **Create product search component** (30min)
+  - Search by name or barcode
+  - Real-time search results
+  - Keyboard navigation
+- [ ] **Build product grid display** (30min)
+  - Responsive product grid
+  - Product images and placeholders
+  - Stock level indicators
+- [ ] **Add product filters** (30min)
+  - Filter by category
+  - Filter by stock status
+  - Sort by name, price, stock
+- [ ] **Create barcode scanner integration** (45min)
+  - Detect USB barcode scanners
+  - Handle barcode input events
+  - Auto-add scanned products to cart
+- [ ] **Build product quick-add** (30min)
+  - One-click add to cart
+  - Quantity selector modal
+  - Recent products shortlist
+- [ ] **Add product details modal** (30min)
+  - Full product information
+  - Stock history
+  - Edit product link (admin only)
+
+##### 💳 **Checkout and Payment** (2-3 hours)
+- [ ] **Create checkout summary screen** (30min)
+  - Final cart review
+  - Customer information (optional)
+  - Payment method selection
+- [ ] **Build payment method components** (45min)
+  - Cash payment with change calculation
+  - Card payment placeholder
+  - Payment method icons and labels
+- [ ] **Implement cash payment flow** (30min)
+  - Cash amount input
+  - Change calculation and display
+  - Cash drawer trigger (if available)
+- [ ] **Add payment validation** (30min)
+  - Sufficient cash validation
+  - Payment amount validation
+  - Error handling for payment failures
+- [ ] **Create transaction completion** (30min)
+  - Save sale to database
+  - Update inventory levels
+  - Clear cart and reset state
+- [ ] **Add receipt generation** (30min)
+  - Format receipt data
+  - Preview receipt before printing
+  - Save receipt to transaction history
+
+##### 🖨️ **Receipt Printing System** (2-3 hours)
+- [ ] **Set up printer detection** (30min)
+  - Detect available printers
+  - Test printer connectivity
+  - Save printer preferences
+- [ ] **Create receipt template** (45min)
+  - Store header with logo/info
+  - Line items with quantities and prices
+  - Tax breakdown and totals
+  - Footer with thank you message
+- [ ] **Implement ESC/POS commands** (45min)
+  - Install node-escpos or similar
+  - Configure printer commands
+  - Handle different paper sizes
+- [ ] **Add print functionality** (30min)
+  - Print receipt after sale
+  - Print duplicate receipts
+  - Print test receipts
+- [ ] **Create printer configuration** (30min)
+  - Printer selection interface
+  - Print settings (paper size, logo)
+  - Test print functionality
+- [ ] **Add error handling** (30min)
+  - Printer offline handling
+  - Paper jam/out of paper alerts
+  - Retry and fallback options
+
+##### 📊 **Sales and Reporting** (1-2 hours)
+- [ ] **Create sales history screen** (30min)
+  - Daily sales summary
+  - Transaction list with details
+  - Filter by date range
+- [ ] **Build daily summary report** (30min)
+  - Total sales and tax
+  - Number of transactions
+  - Top selling products
+- [ ] **Add inventory status screen** (30min)
+  - Current stock levels
+  - Low stock alerts
+  - Recent inventory adjustments
+- [ ] **Create export functionality** (30min)
+  - Export sales data to CSV
+  - Export inventory reports
+  - Email reports (future)
+
+##### 🧪 **Testing and Polish** (2-3 hours)
+- [ ] **Manual testing workflows** (45min)
+  - Test complete sale process
+  - Test barcode scanning
+  - Test receipt printing
+- [ ] **Add keyboard shortcuts** (30min)
+  - F1-F12 for quick actions
+  - Tab navigation throughout app
+  - Escape to cancel/go back
+- [ ] **Performance optimization** (30min)
+  - Lazy load components
+  - Optimize product search
+  - Minimize API calls
+- [ ] **Error handling improvements** (30min)
+  - Better error messages
+  - Offline mode indicators
+  - Connection retry logic
+- [ ] **UI/UX polish** (45min)
+  - Loading states for all actions
+  - Success/failure feedback
+  - Consistent spacing and typography
+- [ ] **Create user documentation** (30min)
+  - Quick start guide
+  - Keyboard shortcuts reference
+  - Troubleshooting guide
+
+---
+
+#### 🟦 Phase 3 — Payments Integration (2–3 Weeks)
+
+**Goal:** Use Stripe or Square for integrated card payments
+
+* Push total to card reader
+* Display success/failure
+* Log payment and attach to sale
+
+##### 🔧 **Payment SDK Setup** (Week 1)
+- [ ] **Research payment providers** (2hrs)
+  - Compare Stripe Terminal vs Square SDK
+  - Check hardware compatibility
+  - Review pricing and fees
+- [ ] **Set up development accounts** (1hr)
+  - Create Stripe/Square developer account
+  - Get test API keys
+  - Download required SDKs
+- [ ] **Install payment dependencies** (1hr)
+  - Add payment SDK to project
+  - Configure environment variables
+  - Set up test mode configuration
+
+##### 💳 **Payment Integration** (Week 2)
+- [ ] **Implement payment initiation** (3hrs)
+  - Send payment amount to card reader
+  - Handle payment processing states
+  - Display payment progress to user
+- [ ] **Handle payment responses** (2hrs)
+  - Process successful payments
+  - Handle declined/failed payments
+  - Manage payment timeouts
+- [ ] **Update database schema** (1hr)
+  - Add payment_id and payment_method to sales
+  - Store payment processor response data
+  - Handle payment refunds/voids
+
+##### 🔄 **Integration Testing** (Week 3)
+- [ ] **Test with card reader hardware** (3hrs)
+  - Physical card reader setup
+  - Test various card types
+  - Test contactless payments
+- [ ] **Error handling and recovery** (2hrs)
+  - Handle network failures
+  - Retry failed payments
+  - Fallback to manual entry
+- [ ] **Payment reconciliation** (1hr)
+  - Daily payment summary
+  - Match POS sales with processor records
+  - Generate payment reports
+
+---
+
+#### 🟨 Phase 4 — OCR Reorder System (3–4 Weeks)
+
+**Goal:** Take photo of invoice, match to products, suggest restock
+
+* Upload or scan invoice
+* Extract item/qty using OCR
+* Match text to SKUs
+* Recommend restock quantities
+
+##### 📱 **Mobile App Foundation** (Week 1)
+- [ ] **Set up React Native project** (2hrs)
+  - Initialize with React Native CLI
+  - Configure development environment
+  - Set up testing on device/emulator
+- [ ] **Implement camera functionality** (3hrs)
+  - Install react-native-camera
+  - Create photo capture screen
+  - Handle image permissions
+- [ ] **Add image preprocessing** (2hrs)
+  - Image cropping and rotation
+  - Brightness/contrast adjustment
+  - Image compression for upload
+
+##### 🤖 **OCR Integration** (Week 2)
+- [ ] **Set up Google Cloud Vision API** (2hrs)
+  - Create GCP project and credentials
+  - Install Google Cloud SDK
+  - Configure API authentication
+- [ ] **Implement text extraction** (3hrs)
+  - Send image to Vision API
+  - Parse OCR response
+  - Handle API errors and retries
+- [ ] **Create text processing pipeline** (2hrs)
+  - Clean and normalize extracted text
+  - Identify potential product names/quantities
+  - Structure data for matching
+
+##### 🔍 **Product Matching** (Week 3)
+- [ ] **Build fuzzy matching system** (4hrs)
+  - Install fuzzy string matching library
+  - Create product name similarity scoring
+  - Handle variations in product names
+- [ ] **Implement quantity extraction** (2hrs)
+  - Parse quantity patterns from text
+  - Handle different quantity formats
+  - Associate quantities with products
+- [ ] **Create matching interface** (2hrs)
+  - Display OCR results with confidence scores
+  - Allow manual product selection
+  - Bulk approve/reject matches
+
+##### 📦 **Reorder Management** (Week 4)
+- [ ] **Create reorder suggestions** (2hrs)
+  - Calculate suggested order quantities
+  - Factor in current stock levels
+  - Consider sales velocity
+- [ ] **Build reorder interface** (3hrs)
+  - Display suggested orders
+  - Allow quantity adjustments
+  - Generate purchase orders
+- [ ] **Integrate with inventory** (1hr)
+  - Update expected stock levels
+  - Track order status
+  - Auto-update inventory when received
+
+---
+
+#### 🟪 Phase 5 — Admin Dashboard (2–3 Weeks)
+
+**Goal:** Web dashboard for product, reports, thresholds
+
+* CRUD product manager
+* Sales and inventory reports
+* Export CSV
+
+##### 🌐 **Dashboard Foundation** (Week 1)
+- [ ] **Set up Next.js project** (2hrs)
+  - Initialize with create-next-app
+  - Configure TypeScript
+  - Set up development environment
+- [ ] **Design dashboard layout** (2hrs)
+  - Create responsive navigation
+  - Set up main content areas
+  - Add sidebar with menu items
+- [ ] **Implement authentication** (3hrs)
+  - JWT token-based auth
+  - Login/logout functionality
+  - Protected routes middleware
+
+##### 📊 **Product Management** (Week 2)
+- [ ] **Create product CRUD interface** (4hrs)
+  - Product listing with search/filter
+  - Add/edit product forms
+  - Bulk product operations
+- [ ] **Add inventory management** (2hrs)
+  - Stock level monitoring
+  - Low stock alerts
+  - Inventory adjustment interface
+- [ ] **Implement category management** (1hr)
+  - Create/edit product categories
+  - Category-based filtering
+  - Category performance metrics
+
+##### 📈 **Reports & Analytics** (Week 3)
+- [ ] **Build sales dashboards** (3hrs)
+  - Daily/weekly/monthly sales charts
+  - Top products and categories
+  - Sales trends and projections
+- [ ] **Create inventory reports** (2hrs)
+  - Stock level reports
+  - Inventory turnover analysis
+  - Reorder point recommendations
+- [ ] **Add export functionality** (2hrs)
+  - CSV export for all reports
+  - Scheduled report generation
+  - Email report delivery
+
+---
+
+#### 🟥 Phase 6 — Label Printing & Printer Expansion (2–4 Weeks)
+
+**Goal:** Expand printer support, print product labels
+
+* Label templates
+* Star/Epson support
+* Printer test/setup UI
+
+##### 🏷️ **Label Design System** (Week 1)
+- [ ] **Create label templates** (3hrs)
+  - Product labels with barcode
+  - Price labels with QR codes
+  - Shelf labels with product info
+- [ ] **Build label designer** (4hrs)
+  - Drag-and-drop interface
+  - Text and barcode elements
+  - Preview and print functionality
+
+##### 🖨️ **Printer Support Expansion** (Week 2)
+- [ ] **Add Star printer support** (2hrs)
+  - Install Star SDK
+  - Test with Star hardware
+  - Configure printer settings
+- [ ] **Add Epson printer support** (2hrs)
+  - Install Epson SDK
+  - Test with Epson hardware
+  - Handle printer-specific features
+- [ ] **Create universal printer interface** (2hrs)
+  - Abstract printer operations
+  - Handle different printer protocols
+  - Unified error handling
+
+##### ⚙️ **Printer Configuration** (Week 3)
+- [ ] **Build printer setup wizard** (3hrs)
+  - Auto-detect available printers
+  - Test print functionality
+  - Save printer configurations
+- [ ] **Add printer management** (2hrs)
+  - Printer status monitoring
+  - Print queue management
+  - Printer maintenance alerts
+- [ ] **Create print job templates** (2hrs)
+  - Batch label printing
+  - Scheduled print jobs
+  - Print job history
+
+##### 🧪 **Testing & Optimization** (Week 4)
+- [ ] **Hardware compatibility testing** (3hrs)
+  - Test with various printer models
+  - Verify label formats and sizes
+  - Performance testing with large batches
+- [ ] **User interface polish** (2hrs)
+  - Streamline printing workflows
+  - Add keyboard shortcuts
+  - Improve error messages
+- [ ] **Documentation and training** (1hr)
+  - Printer setup guides
+  - Label design tutorials
+  - Troubleshooting documentation
+
+---
+
+### 🧠 Architecture
+
+```
+pos-ecosystem/
+├── frontend-electron/         # POS terminal app
+├── frontend-mobile/           # OCR invoice scanner
+├── frontend-dashboard/        # Admin web panel
+├── backend-api/               # Express API (✅ COMPLETED)
+├── db/                        # Schema and seed scripts (✅ COMPLETED)
+├── printer-lib/               # Unified printer support
+├── payment-integrations/      # Stripe/Square wrappers
+```
+
+---
+
+### 📌 Feature Alignment by Store Type
+
+| Store Type   | Features Needed                                 |
+| ------------ | ----------------------------------------------- |
+| Convenience  | Barcode scan, quick checkout, inventory reports |
+| Liquor       | Age check prompts, taxes, bottle deposits       |
+| Smoke Shop   | SKU control, reorder history, custom receipts   |
+| Future Lotto | Manual entry, scratcher tracking, payouts       |
+
+---
+
+### ✅ Final Strategy
+
+* ✅ Start from scratch if long-term control is priority
+* ✅ Use modular design to support future upgrades
+* ✅ Electron allows desktop support with printer/scanner APIs
+* ✅ Stripe Terminal or Square for secure payments
+* ✅ Mobile OCR app as a bonus phase for automation

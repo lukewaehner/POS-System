@@ -1,0 +1,80 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Build outputs
+dist/
+build/
+*.tgz
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Electron
+frontend-electron/dist/
+frontend-electron/build/
+
+# React Native
+frontend-mobile/android/app/build/
+frontend-mobile/ios/build/
+frontend-mobile/metro-cache/
+
+# Next.js
+frontend-dashboard/.next/
+frontend-dashboard/out/
+
+# Test coverage
+coverage/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary folders
+tmp/
+temp/
+
+# Hardware integration testing
+hardware-test/
+
+# Payment integration test data
+payment-test-data/
+
+# OCR test images
+ocr-test-images/
+
+# Printer test files
+printer-test-files/ 

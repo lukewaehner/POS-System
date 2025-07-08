@@ -1,0 +1,23 @@
+{
+  "name": "frontend-electron",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-scripts": "^0.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "electron": "^37.2.0",
+    "wait-on": "^8.0.3"
+  }
+}
