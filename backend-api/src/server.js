@@ -42,11 +42,89 @@ const createApp = (database) => {
     });
   });
 
-  // Get all products endpoint
+  // Get all products endpoint with search and filtering
   app.get("/api/products", (req, res) => {
-    const query = "SELECT * FROM products ORDER BY name";
+    const {
+      query: searchQuery,
+      category,
+      minPrice,
+      maxPrice,
+      inStock,
+      lowStock,
+      sortBy,
+      sortOrder,
+      limit,
+      offset,
+    } = req.query;
 
-    db.all(query, [], (err, rows) => {
+    // Build dynamic SQL query with category join
+    let sqlQuery = `
+      SELECT p.*, c.name as category_name 
+      FROM products p 
+      LEFT JOIN categories c ON p.category_id = c.id 
+      WHERE p.is_active = 1
+    `;
+    const params = [];
+
+    // Add search by name or description
+    if (searchQuery) {
+      sqlQuery += " AND (p.name LIKE ? OR p.description LIKE ?)";
+      const searchPattern = `%${searchQuery}%`;
+      params.push(searchPattern, searchPattern);
+    }
+
+    // Add category filter by category name
+    if (category) {
+      sqlQuery += " AND c.name = ?";
+      params.push(category);
+    }
+
+    // Add price filters
+    if (minPrice) {
+      sqlQuery += " AND p.price >= ?";
+      params.push(parseFloat(minPrice));
+    }
+    if (maxPrice) {
+      sqlQuery += " AND p.price <= ?";
+      params.push(parseFloat(maxPrice));
+    }
+
+    // Add stock filters
+    if (inStock === "true") {
+      sqlQuery += " AND p.stock_quantity > 0";
+    }
+    if (lowStock === "true") {
+      sqlQuery += " AND p.stock_quantity <= p.min_stock_level";
+    }
+
+    // Add sorting
+    const validSortColumns = ["name", "price", "stock_quantity", "created_at"];
+    const validSortOrders = ["asc", "desc"];
+
+    if (sortBy && validSortColumns.includes(sortBy)) {
+      const order = validSortOrders.includes(sortOrder?.toLowerCase())
+        ? sortOrder.toUpperCase()
+        : "ASC";
+      sqlQuery += ` ORDER BY p.${sortBy} ${order}`;
+    } else {
+      sqlQuery += " ORDER BY p.name ASC";
+    }
+
+    // Add pagination
+    if (limit) {
+      sqlQuery += " LIMIT ?";
+      params.push(parseInt(limit));
+
+      if (offset) {
+        sqlQuery += " OFFSET ?";
+        params.push(parseInt(offset));
+      }
+    }
+
+    console.log("🔍 Products SQL Query:", sqlQuery);
+    console.log("🔍 Query Params:", params);
+
+    db.all(sqlQuery, params, (err, rows) => {
       if (err) {
         console.error("Database error:", err.message);
         res
@@ -57,6 +135,18 @@ const createApp = (database) => {
           products: rows,
           count: rows.length,
           timestamp: new Date().toISOString(),
+          filters: {
+            searchQuery,
+            category,
+            minPrice,
+            maxPrice,
+            inStock,
+            lowStock,
+            sortBy,
+            sortOrder,
+            limit,
+            offset,
+          },
         });
       }
     });

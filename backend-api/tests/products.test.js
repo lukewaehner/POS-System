@@ -55,6 +55,111 @@ describe("Product API Tests", () => {
       expect(product).toHaveProperty("is_active");
       expect(product).toHaveProperty("created_at");
     });
+
+    // Search and filtering tests
+    test("should filter products by search query", async () => {
+      const response = await request(app).get("/api/products?query=Coca");
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty("products");
+      expect(response.body).toHaveProperty("filters");
+      expect(response.body.filters.searchQuery).toBe("Coca");
+
+      // Should find Coca-Cola
+      const products = response.body.products;
+      expect(products.length).toBeGreaterThan(0);
+      expect(products[0].name).toContain("Coca");
+    });
+
+    test("should filter products by category", async () => {
+      const response = await request(app).get(
+        "/api/products?category=Beverages"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.filters.category).toBe("Beverages");
+
+      const products = response.body.products;
+      products.forEach((product) => {
+        expect(product.category_name).toBe("Beverages");
+      });
+    });
+
+    test("should filter products by price range", async () => {
+      const response = await request(app).get(
+        "/api/products?minPrice=1.00&maxPrice=2.00"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.filters.minPrice).toBe("1.00");
+      expect(response.body.filters.maxPrice).toBe("2.00");
+
+      const products = response.body.products;
+      products.forEach((product) => {
+        expect(product.price).toBeGreaterThanOrEqual(1.0);
+        expect(product.price).toBeLessThanOrEqual(2.0);
+      });
+    });
+
+    test("should filter products by stock status", async () => {
+      const response = await request(app).get("/api/products?inStock=true");
+
+      expect(response.status).toBe(200);
+      expect(response.body.filters.inStock).toBe("true");
+
+      const products = response.body.products;
+      products.forEach((product) => {
+        expect(product.stock_quantity).toBeGreaterThan(0);
+      });
+    });
+
+    test("should sort products by price ascending", async () => {
+      const response = await request(app).get(
+        "/api/products?sortBy=price&sortOrder=asc"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.filters.sortBy).toBe("price");
+      expect(response.body.filters.sortOrder).toBe("asc");
+
+      const products = response.body.products;
+      for (let i = 0; i < products.length - 1; i++) {
+        expect(products[i].price).toBeLessThanOrEqual(products[i + 1].price);
+      }
+    });
+
+    test("should limit results", async () => {
+      const response = await request(app).get("/api/products?limit=3");
+
+      expect(response.status).toBe(200);
+      expect(response.body.filters.limit).toBe("3");
+      expect(response.body.products.length).toBeLessThanOrEqual(3);
+    });
+
+    test("should combine multiple filters", async () => {
+      const response = await request(app).get(
+        "/api/products?query=Cola&category=Beverages&minPrice=1.00&maxPrice=2.00&limit=5"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.filters).toMatchObject({
+        searchQuery: "Cola",
+        category: "Beverages",
+        minPrice: "1.00",
+        maxPrice: "2.00",
+        limit: "5",
+      });
+    });
+
+    test("should return empty array for no matches", async () => {
+      const response = await request(app).get(
+        "/api/products?query=NonExistentProduct"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.products).toEqual([]);
+      expect(response.body.count).toBe(0);
+    });
   });
 
   describe("GET /api/products/:id", () => {
