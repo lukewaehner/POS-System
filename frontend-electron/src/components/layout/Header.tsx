@@ -28,6 +28,7 @@ const HamburgerMenu: React.FC<{
     { id: "dashboard", name: "Dashboard", icon: "🏠" },
     { id: "products", name: "Products", icon: "📦" },
     { id: "checkout", name: "Checkout", icon: "🛒" },
+    { id: "checkout-summary", name: "Payment", icon: "💳" },
     { id: "sales", name: "Sales", icon: "💰" },
     { id: "reports", name: "Reports", icon: "📊" },
     { id: "demo", name: "Component Demo", icon: "🎯" },

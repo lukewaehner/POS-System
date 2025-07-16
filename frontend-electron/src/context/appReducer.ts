@@ -1,4 +1,5 @@
 import { AppState, AppAction, CartItem, Notification } from "../types/state";
+import { Product } from "../services/productsService";
 import { sanitizeCart } from "../utils/cartValidation";
 
 // Calculate cart totals helper
@@ -291,9 +292,20 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
 
     case "UPDATE_PRODUCT": {
       const { product } = action.payload;
-      const updatedItems = state.products.items.map((p) =>
-        p.id === product.id ? product : p
+      const existingProductIndex = state.products.items.findIndex(
+        (p) => p.id === product.id
       );
+
+      let updatedItems: Product[];
+      if (existingProductIndex >= 0) {
+        // Update existing product
+        updatedItems = state.products.items.map((p) =>
+          p.id === product.id ? product : p
+        );
+      } else {
+        // Add new product if it doesn't exist
+        updatedItems = [...state.products.items, product];
+      }
 
       // Update cart items if product was updated
       const updatedCartItems = state.cart.items.map((item) =>
@@ -320,6 +332,34 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
         cart: {
           items: updatedCartItems,
           ...totals,
+        },
+      };
+    }
+
+    case "ADD_PRODUCT": {
+      const { product } = action.payload;
+
+      // Check if product already exists
+      const existingProductIndex = state.products.items.findIndex(
+        (p) => p.id === product.id
+      );
+
+      if (existingProductIndex >= 0) {
+        // Product already exists, update it instead
+        return appReducer(state, {
+          type: "UPDATE_PRODUCT",
+          payload: { product },
+        });
+      }
+
+      // Add new product
+      const updatedItems = [...state.products.items, product];
+
+      return {
+        ...state,
+        products: {
+          ...state.products,
+          items: updatedItems,
         },
       };
     }

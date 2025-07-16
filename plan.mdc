@@ -215,7 +215,7 @@ A custom POS system designed for:
   - Filter by category
   - Filter by stock status
   - Sort by name, price, stock
-- [ ] **Create barcode scanner integration** (45min)
+- [x] **Create barcode scanner integration** (45min)
   - Detect USB barcode scanners
   - Handle barcode input events
   - Auto-add scanned products to cart

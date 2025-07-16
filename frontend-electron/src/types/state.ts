@@ -99,6 +99,7 @@ export type AppAction =
   | { type: "SET_PRODUCTS_LOADING"; payload: { isLoading: boolean } }
   | { type: "SET_SEARCH_QUERY"; payload: { query: string } }
   | { type: "SET_SELECTED_CATEGORY"; payload: { category: string | null } }
+  | { type: "ADD_PRODUCT"; payload: { product: Product } }
   | { type: "UPDATE_PRODUCT"; payload: { product: Product } }
   | { type: "REMOVE_PRODUCT"; payload: { productId: number } }
   | { type: "ADD_RECENTLY_VIEWED"; payload: { product: Product } }

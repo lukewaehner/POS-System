@@ -35,8 +35,9 @@ const BarcodeScannerDebug: React.FC = () => {
   const barcodeScanner = useBarcodeScanner({
     onBarcodeScanned: handleBarcodeScanned,
     onError: handleBarcodeError,
-    minBarcodeLength: 6,
-    maxBarcodeLength: 25,
+    minBarcodeLength: 8,
+    maxBarcodeLength: 20,
+    timeThreshold: 100,
     enableLogging: true,
     preventDefaultKeyEvents: false, // Don't prevent events so we can see them
   });

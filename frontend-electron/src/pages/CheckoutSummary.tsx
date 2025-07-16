@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useCart } from "../hooks/useCart";
 import { useNotifications } from "../hooks/useNotifications";
-import { PaymentProcessingModal, PaymentStatus } from "../components/ui";
+
+type PaymentMethod = "cash" | "card" | "other";
+type PaymentStatus = "selecting" | "processing" | "success" | "failed";
 
 interface CustomerInfo {
   name?: string;
@@ -9,460 +11,523 @@ interface CustomerInfo {
   phone?: string;
 }
 
-type PaymentMethodSelection = "cash" | "card" | "saved";
-type PaymentMethod = "cash" | "card" | "other";
+interface CheckoutSummaryProps {
+  onNavigate?: (page: string) => void;
+}
 
-const CheckoutSummary: React.FC = () => {
-  const { cartItems, cartSubtotal, cartTax, cartTotal, clearCart } = useCart();
+const CheckoutSummary: React.FC<CheckoutSummaryProps> = ({ onNavigate }) => {
+  const {
+    cartItems,
+    cartSubtotal,
+    cartTax,
+    cartTotal,
+    clearCart,
+    removeFromCart,
+    updateCartQuantity,
+  } = useCart();
   const { showSuccess, showError } = useNotifications();
 
+  // State management
+  const [activePaymentMethod, setActivePaymentMethod] =
+    useState<PaymentMethod>("cash");
+  const [cashReceived, setCashReceived] = useState<number>(0);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({});
-  const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<PaymentMethodSelection | null>(null);
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [showCustomerInfo, setShowCustomerInfo] = useState(false);
   const [paymentStatus, setPaymentStatus] =
     useState<PaymentStatus>("selecting");
-  const [cashReceived, setCashReceived] = useState<number>(0);
+  const [receiptOption, setReceiptOption] = useState<
+    "print" | "email" | "none"
+  >("print");
 
-  const formatPrice = (price: number) => {
+  // Calculations
+  const change = cashReceived - cartTotal;
+  const hasItems = cartItems.length > 0;
+  const canProceedCash =
+    activePaymentMethod === "cash" && cashReceived >= cartTotal;
+  const canProceedCard = activePaymentMethod === "card";
+  const canProceed = hasItems && (canProceedCash || canProceedCard);
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
-    }).format(price);
+    }).format(amount);
   };
 
-  const change = cashReceived - cartTotal;
-  const hasItems = cartItems.length > 0;
-  const canProceed = hasItems && selectedPaymentMethod;
+  // Generate smart quick amounts for cash
+  const generateQuickAmounts = () => {
+    const amounts = [];
+    amounts.push(cartTotal); // Exact amount
 
-  const handleCustomerInfoChange = (
-    field: keyof CustomerInfo,
-    value: string
-  ) => {
-    setCustomerInfo((prev) => ({ ...prev, [field]: value }));
+    const roundedUp = Math.ceil(cartTotal);
+    if (roundedUp !== cartTotal) amounts.push(roundedUp);
+
+    const roundedTo5 = Math.ceil(cartTotal / 5) * 5;
+    if (roundedTo5 !== roundedUp && amounts.length < 4)
+      amounts.push(roundedTo5);
+
+    const roundedTo10 = Math.ceil(cartTotal / 10) * 10;
+    if (roundedTo10 !== roundedTo5 && amounts.length < 4)
+      amounts.push(roundedTo10);
+
+    return amounts.slice(0, 4);
   };
 
-  const handlePaymentMethodSelect = (method: PaymentMethodSelection) => {
-    setSelectedPaymentMethod(method);
+  // Handle cash input
+  const handleCashInput = (value: string) => {
+    const numericValue = parseFloat(value) || 0;
+    setCashReceived(numericValue);
   };
 
-  const handleProceedToPayment = () => {
-    if (!canProceed) return;
-
-    if (selectedPaymentMethod === "cash") {
-      // For cash payments, we need to collect the cash amount
-      setPaymentModalOpen(true);
-      setPaymentStatus("processing");
-      simulateCashPayment();
-    } else if (selectedPaymentMethod === "card") {
-      // For card payments, proceed directly
-      setPaymentModalOpen(true);
-      setPaymentStatus("processing");
-      simulateCardPayment();
+  // Handle numpad input
+  const handleNumpadInput = (digit: string) => {
+    if (digit === "clear") {
+      setCashReceived(0);
+    } else if (digit === ".") {
+      const currentStr = cashReceived.toString();
+      if (!currentStr.includes(".")) {
+        setCashReceived(parseFloat(currentStr + "."));
+      }
+    } else {
+      const currentStr = cashReceived.toString();
+      const newValue = currentStr === "0" ? digit : currentStr + digit;
+      setCashReceived(parseFloat(newValue));
     }
   };
 
-  const simulateCashPayment = () => {
-    // Simulate cash payment processing
+  // Handle payment processing
+  const handleCompletePayment = () => {
+    if (!canProceed) return;
+
+    setPaymentStatus("processing");
+
+    // Simulate payment processing
     setTimeout(() => {
-      setPaymentStatus("success");
-      showSuccess("Cash payment completed successfully!");
+      const success =
+        activePaymentMethod === "cash" ? true : Math.random() > 0.1; // 90% success for cards
+
+      if (success) {
+        setPaymentStatus("success");
+        showSuccess("Payment completed successfully!");
+
+        // Clear cart after successful payment
+        setTimeout(() => {
+          clearCart();
+          setCashReceived(0);
+          setCustomerInfo({});
+          setPaymentStatus("selecting");
+        }, 2000);
+      } else {
+        setPaymentStatus("failed");
+        showError("Payment failed. Please try again.");
+        setTimeout(() => setPaymentStatus("selecting"), 2000);
+      }
     }, 2000);
   };
 
-  const simulateCardPayment = () => {
-    // Simulate card payment processing
-    setTimeout(() => {
-      const success = Math.random() > 0.2; // 80% success rate for demo
-      if (success) {
-        setPaymentStatus("success");
-        showSuccess("Card payment completed successfully!");
-      } else {
-        setPaymentStatus("failed");
-        showError("Card payment failed. Please try again.");
-      }
-    }, 3000);
-  };
-
-  const handlePaymentComplete = () => {
-    if (paymentStatus === "success") {
-      // Clear cart and reset state
-      clearCart();
-      setCustomerInfo({});
-      setSelectedPaymentMethod(null);
-      setCashReceived(0);
-      setPaymentModalOpen(false);
-      setPaymentStatus("selecting");
-      showSuccess("Transaction completed! Receipt printed.");
-    } else {
-      setPaymentModalOpen(false);
-      setPaymentStatus("selecting");
+  // Add back navigation function
+  const handleBackToCart = () => {
+    if (onNavigate) {
+      onNavigate("checkout");
     }
   };
 
-  const handleRetryPayment = () => {
-    setPaymentStatus("processing");
-    if (selectedPaymentMethod === "cash") {
-      simulateCashPayment();
-    } else {
-      simulateCardPayment();
-    }
+  // Render numpad for cash payments
+  const renderNumpad = () => {
+    const buttons = [
+      ["1", "2", "3"],
+      ["4", "5", "6"],
+      ["7", "8", "9"],
+      ["clear", "0", "."],
+    ];
+
+    return (
+      <div className="grid grid-cols-3 gap-2">
+        {buttons.flat().map((btn) => (
+          <button
+            key={btn}
+            onClick={() => handleNumpadInput(btn)}
+            className={`h-12 rounded-lg font-semibold transition-colors ${
+              btn === "clear"
+                ? "bg-red-100 text-red-700 hover:bg-red-200"
+                : "bg-gray-100 text-gray-900 hover:bg-gray-200"
+            }`}
+          >
+            {btn === "clear" ? "CLR" : btn}
+          </button>
+        ))}
+      </div>
+    );
   };
 
-  // Redirect to main checkout if no items
   if (!hasItems) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="h-full flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="text-gray-400 text-6xl mb-4">🛒</div>
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-            No Items in Cart
+            Cart is Empty
           </h2>
-          <p className="text-gray-500 mb-6">
-            Add some items to your cart before proceeding to checkout.
+          <p className="text-gray-500">
+            Add items to your cart to begin checkout
           </p>
-          <button onClick={() => window.history.back()} className="btn-primary">
-            ← Back to Shopping
-          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Checkout Summary</h1>
-          <p className="text-gray-600 mt-1">
-            Review your order and complete your purchase
-          </p>
+    <div className="h-full bg-gray-50 flex">
+      {/* Left Column - Order Details */}
+      <div className="flex-1 bg-white border-r border-gray-200 flex flex-col">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleBackToCart}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+              <h1 className="text-2xl font-bold text-gray-900">Payment</h1>
+            </div>
+            <button
+              onClick={() => setShowCustomerInfo(!showCustomerInfo)}
+              className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              Customer
+            </button>
+          </div>
         </div>
-        <button onClick={() => window.history.back()} className="btn-secondary">
-          ← Back to Cart
-        </button>
+
+        {/* Customer Info (Collapsible) */}
+        {showCustomerInfo && (
+          <div className="px-6 py-4 bg-blue-50 border-b border-blue-200">
+            <div className="grid grid-cols-3 gap-4">
+              <input
+                type="text"
+                placeholder="Name"
+                value={customerInfo.name || ""}
+                onChange={(e) =>
+                  setCustomerInfo((prev) => ({ ...prev, name: e.target.value }))
+                }
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={customerInfo.email || ""}
+                onChange={(e) =>
+                  setCustomerInfo((prev) => ({
+                    ...prev,
+                    email: e.target.value,
+                  }))
+                }
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="tel"
+                placeholder="Phone"
+                value={customerInfo.phone || ""}
+                onChange={(e) =>
+                  setCustomerInfo((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
+                  }))
+                }
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Order Items */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-2">
+            {cartItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between py-2 border-b border-gray-100"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-900">
+                      {item.product.name}
+                    </span>
+                    <span className="font-mono text-gray-900">
+                      {formatCurrency(item.subtotal)}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <button
+                      onClick={() =>
+                        updateCartQuantity(item.id, item.quantity - 1)
+                      }
+                      className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="w-8 text-center font-medium">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() =>
+                        updateCartQuantity(item.id, item.quantity + 1)
+                      }
+                      className="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                    >
+                      +
+                    </button>
+                    <button
+                      onClick={() => removeFromCart(item.id)}
+                      className="ml-2 w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Order Summary */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Subtotal:</span>
+              <span className="font-mono">{formatCurrency(cartSubtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Tax:</span>
+              <span className="font-mono">{formatCurrency(cartTax)}</span>
+            </div>
+            <div className="flex justify-between text-xl font-bold border-t pt-2">
+              <span>Total:</span>
+              <span className="font-mono text-green-600">
+                {formatCurrency(cartTotal)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Cart Review & Customer Info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Final Cart Review */}
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Order Review
-            </h2>
-            <div className="space-y-4">
-              {cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between py-3 border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                      {item.product.image_url ? (
-                        <img
-                          src={item.product.image_url}
-                          alt={item.product.name}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                      ) : (
-                        <span className="text-2xl">📦</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 truncate">
-                        {item.product.name}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {formatPrice(item.product.price)} each
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium text-gray-900">
-                      {formatPrice(item.subtotal)}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Qty: {item.quantity}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Order Totals */}
-            <div className="mt-6 pt-4 border-t border-gray-200 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span>{formatPrice(cartSubtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Tax:</span>
-                <span>{formatPrice(cartTax)}</span>
-              </div>
-              <div className="flex justify-between text-lg font-semibold pt-2 border-t border-gray-200">
-                <span>Total:</span>
-                <span>{formatPrice(cartTotal)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Customer Information (Optional) */}
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Customer Information
-              <span className="text-sm font-normal text-gray-500 ml-2">
-                (Optional)
-              </span>
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name
-                </label>
-                <input
-                  type="text"
-                  value={customerInfo.name || ""}
-                  onChange={(e) =>
-                    handleCustomerInfoChange("name", e.target.value)
-                  }
-                  placeholder="Enter customer name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={customerInfo.phone || ""}
-                  onChange={(e) =>
-                    handleCustomerInfoChange("phone", e.target.value)
-                  }
-                  placeholder="(555) 123-4567"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={customerInfo.email || ""}
-                  onChange={(e) =>
-                    handleCustomerInfoChange("email", e.target.value)
-                  }
-                  placeholder="customer@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-            <p className="text-sm text-gray-500 mt-3">
-              Customer information is optional and used for receipts and
-              follow-up communications.
-            </p>
+      {/* Right Column - Payment */}
+      <div className="w-96 bg-white flex flex-col">
+        {/* Payment Method Tabs */}
+        <div className="border-b border-gray-200">
+          <div className="flex">
+            {[
+              { id: "cash", label: "Cash", icon: "💵" },
+              { id: "card", label: "Card", icon: "💳" },
+              { id: "other", label: "Other", icon: "💰" },
+            ].map((method) => (
+              <button
+                key={method.id}
+                onClick={() =>
+                  setActivePaymentMethod(method.id as PaymentMethod)
+                }
+                className={`flex-1 py-4 px-3 text-center font-medium transition-colors ${
+                  activePaymentMethod === method.id
+                    ? "bg-blue-500 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <div className="text-2xl mb-1">{method.icon}</div>
+                <div className="text-sm">{method.label}</div>
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Right Column: Payment Method Selection */}
-        <div className="space-y-6">
-          {/* Payment Method Selection */}
-          <div className="card p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Payment Method
-            </h2>
-            <div className="space-y-3">
-              {/* Cash Payment */}
-              <button
-                onClick={() => handlePaymentMethodSelect("cash")}
-                className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
-                  selectedPaymentMethod === "cash"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="text-2xl">💵</div>
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      Cash Payment
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Pay with cash, receive change
-                    </div>
-                  </div>
-                  {selectedPaymentMethod === "cash" && (
-                    <div className="ml-auto text-blue-500">✓</div>
-                  )}
-                </div>
-              </button>
+        {/* Payment Content */}
+        <div className="flex-1 p-6">
+          {/* Total Due */}
+          <div className="text-center mb-6">
+            <div className="text-sm text-gray-600">Total Due</div>
+            <div className="text-3xl font-bold text-gray-900">
+              {formatCurrency(cartTotal)}
+            </div>
+          </div>
 
-              {/* Card Payment */}
-              <button
-                onClick={() => handlePaymentMethodSelect("card")}
-                className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
-                  selectedPaymentMethod === "card"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
+          {/* Cash Payment */}
+          {activePaymentMethod === "cash" && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Amount Received
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={cashReceived || ""}
+                  onChange={(e) => handleCashInput(e.target.value)}
+                  className="w-full px-4 py-3 text-2xl font-mono text-right border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                />
+              </div>
+
+              {/* Quick Amounts */}
+              <div className="grid grid-cols-2 gap-2">
+                {generateQuickAmounts().map((amount, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCashReceived(amount)}
+                    className={`py-2 px-3 rounded-lg font-medium transition-colors ${
+                      cashReceived === amount
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {formatCurrency(amount)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Numpad */}
+              <div className="mt-4">{renderNumpad()}</div>
+
+              {/* Change Display */}
+              {cashReceived > 0 && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Change:</span>
+                    <span
+                      className={`text-xl font-bold ${
+                        change >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      {change >= 0
+                        ? formatCurrency(change)
+                        : `${formatCurrency(Math.abs(change))} short`}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Card Payment */}
+          {activePaymentMethod === "card" && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center space-x-3">
                   <div className="text-2xl">💳</div>
                   <div>
-                    <div className="font-medium text-gray-900">
-                      Card Payment
+                    <div className="font-medium text-blue-900">
+                      Ready for Card Payment
                     </div>
-                    <div className="text-sm text-gray-500">
-                      Credit, debit, or contactless
-                    </div>
-                  </div>
-                  {selectedPaymentMethod === "card" && (
-                    <div className="ml-auto text-blue-500">✓</div>
-                  )}
-                </div>
-              </button>
-
-              {/* Save for Later */}
-              <button
-                onClick={() => handlePaymentMethodSelect("saved")}
-                className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
-                  selectedPaymentMethod === "saved"
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                disabled
-              >
-                <div className="flex items-center space-x-3 opacity-50">
-                  <div className="text-2xl">🧾</div>
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      Save for Later
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      Hold transaction (coming soon)
+                    <div className="text-sm text-blue-700">
+                      Insert, swipe, or tap your card
                     </div>
                   </div>
                 </div>
-              </button>
-            </div>
-          </div>
+              </div>
 
-          {/* Cash Amount Input (shown when cash is selected) */}
-          {selectedPaymentMethod === "cash" && (
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Cash Amount
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Amount Received
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">$</span>
-                    </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={cartTotal}
-                      value={cashReceived || ""}
-                      onChange={(e) =>
-                        setCashReceived(parseFloat(e.target.value) || 0)
-                      }
-                      placeholder={cartTotal.toFixed(2)}
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-right text-lg font-mono"
-                    />
+              {/* Payment Methods */}
+              <div className="flex space-x-2">
+                {["💳", "💰", "📱", "📟"].map((icon, index) => (
+                  <div
+                    key={index}
+                    className="flex-1 p-3 bg-gray-50 rounded-lg text-center"
+                  >
+                    <div className="text-xl">{icon}</div>
                   </div>
-                </div>
+                ))}
+              </div>
 
-                {/* Quick Cash Buttons */}
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    Math.ceil(cartTotal),
-                    Math.ceil(cartTotal / 5) * 5,
-                    Math.ceil(cartTotal / 10) * 10,
-                    Math.ceil(cartTotal / 20) * 20,
-                  ].map((amount, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCashReceived(amount)}
-                      className="btn-secondary text-sm"
-                    >
-                      {formatPrice(amount)}
-                    </button>
-                  ))}
+              {/* Card Reader Status */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium">Card Reader</span>
                 </div>
+                <span className="text-sm text-green-600">Ready</span>
+              </div>
 
-                {/* Change Calculation */}
-                {cashReceived > 0 && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Change:</span>
-                      <span
-                        className={`text-lg font-semibold ${
-                          change >= 0 ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        {formatPrice(Math.abs(change))}
-                        {change < 0 && " (Insufficient)"}
-                      </span>
-                    </div>
-                  </div>
-                )}
+              {/* Development Mode Badge */}
+              <div className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                <span className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>
+                Development Mode
               </div>
             </div>
           )}
 
-          {/* Proceed to Payment Button */}
-          <div className="card p-6">
-            <button
-              onClick={handleProceedToPayment}
-              disabled={
-                !canProceed || (selectedPaymentMethod === "cash" && change < 0)
-              }
-              className="w-full btn-primary text-lg py-4"
-            >
-              {!selectedPaymentMethod
-                ? "Select Payment Method"
-                : selectedPaymentMethod === "cash" && change < 0
-                ? "Insufficient Cash Amount"
-                : `Complete Payment • ${formatPrice(cartTotal)}`}
-            </button>
+          {/* Other Payment */}
+          {activePaymentMethod === "other" && (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-4">🚧</div>
+              <div className="text-gray-600">Coming Soon</div>
+            </div>
+          )}
+        </div>
 
-            {!hasItems && (
-              <p className="text-sm text-gray-500 mt-3 text-center">
-                Add items to cart to enable checkout
-              </p>
-            )}
+        {/* Receipt Options */}
+        <div className="px-6 py-3 border-t border-gray-200">
+          <div className="flex items-center justify-center space-x-4">
+            {[
+              { id: "print", icon: "🖨️", label: "Print" },
+              { id: "email", icon: "📧", label: "Email" },
+              { id: "none", icon: "🚫", label: "None" },
+            ].map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setReceiptOption(option.id as any)}
+                className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
+                  receiptOption === option.id
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <div className="text-lg">{option.icon}</div>
+                <div className="text-xs">{option.label}</div>
+              </button>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* Payment Processing Modal */}
-      <PaymentProcessingModal
-        isOpen={paymentModalOpen}
-        onClose={handlePaymentComplete}
-        status={paymentStatus}
-        paymentMethod={
-          selectedPaymentMethod === "saved"
-            ? "other"
-            : (selectedPaymentMethod as PaymentMethod) || "cash"
-        }
-        amount={cartTotal}
-        cashReceived={
-          selectedPaymentMethod === "cash" ? cashReceived : undefined
-        }
-        change={selectedPaymentMethod === "cash" ? change : undefined}
-        onRetry={handleRetryPayment}
-        onNewTransaction={() => {
-          setPaymentModalOpen(false);
-          setPaymentStatus("selecting");
-        }}
-      />
+        {/* Complete Payment Button */}
+        <div className="p-6 border-t border-gray-200">
+          <button
+            onClick={handleCompletePayment}
+            disabled={!canProceed || paymentStatus === "processing"}
+            className={`w-full py-4 text-lg font-semibold rounded-lg transition-colors ${
+              canProceed && paymentStatus === "selecting"
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {paymentStatus === "processing" ? (
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Processing...</span>
+              </div>
+            ) : !canProceed ? (
+              activePaymentMethod === "cash" && cashReceived < cartTotal ? (
+                "Insufficient Amount"
+              ) : (
+                "Complete Payment"
+              )
+            ) : (
+              `Complete Payment • ${formatCurrency(cartTotal)}`
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -241,7 +241,7 @@ export const useProducts = () => {
         if (productResponse.success && productResponse.data) {
           // Add the new product to the local state
           dispatch({
-            type: "UPDATE_PRODUCT",
+            type: "ADD_PRODUCT",
             payload: { product: productResponse.data },
           });
 

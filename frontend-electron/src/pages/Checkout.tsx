@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useCart } from "../hooks/useCart";
 import { useProducts } from "../hooks/useProducts";
 import { useNotifications } from "../hooks/useNotifications";
 import useBarcodeScanner from "../hooks/useBarcodeScanner";
 import QuickAddProductModal from "../components/ui/QuickAddProductModal";
+import BarcodeScanConfirmModal from "../components/ui/BarcodeScanConfirmModal";
 import { Product, ProductsService } from "../services/productsService";
 
 interface Category {
@@ -373,7 +374,11 @@ const CartItem: React.FC<{
 
 // Hamburger Menu Component
 
-const Checkout = () => {
+interface CheckoutProps {
+  onNavigate?: (page: string) => void;
+}
+
+const Checkout: React.FC<CheckoutProps> = ({ onNavigate }) => {
   const {
     cartItems,
     cartSubtotal,
@@ -401,6 +406,10 @@ const Checkout = () => {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [barcodeScanConfirmModalOpen, setBarcodeScanConfirmModalOpen] =
+    useState(false);
+  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [shouldAddToCart, setShouldAddToCart] = useState(false);
 
   // Cart pagination state
   const [currentCartPage, setCurrentCartPage] = useState(0);
@@ -433,7 +442,8 @@ const Checkout = () => {
         quantityModalOpen ||
         categoryModalOpen ||
         quickAddModalOpen ||
-        deleteConfirmOpen
+        deleteConfirmOpen ||
+        barcodeScanConfirmModalOpen
       ) {
         return;
       }
@@ -464,6 +474,7 @@ const Checkout = () => {
     categoryModalOpen,
     quickAddModalOpen,
     deleteConfirmOpen,
+    barcodeScanConfirmModalOpen,
     cartItems,
   ]);
 
@@ -561,6 +572,7 @@ const Checkout = () => {
       const product = await getProductByBarcode(barcode);
 
       if (product) {
+        // Existing product - add to cart automatically (old behavior)
         if (canAddToCart(product)) {
           addToCart(product, 1);
           setLastScannedItem(product);
@@ -589,8 +601,9 @@ const Checkout = () => {
           });
         }
       } else {
+        // New product - show confirmation modal with options
         setScannedBarcode(barcode);
-        setQuickAddModalOpen(true);
+        setBarcodeScanConfirmModalOpen(true);
       }
     } catch (error) {
       console.error("🚨 [Checkout] Error processing barcode:", error);
@@ -762,7 +775,13 @@ const Checkout = () => {
 
   const handlePayment = (method: string) => {
     if (hasItems) {
-      alert(`${method} payment coming soon!`);
+      // Navigate to checkout summary page for payment processing
+      if (onNavigate) {
+        onNavigate("checkout-summary");
+      } else {
+        // Fallback if no navigation prop provided
+        alert(`${method} payment - Please navigate to checkout summary`);
+      }
     }
   };
 
@@ -987,6 +1006,7 @@ const Checkout = () => {
                   className="flex flex-col items-center justify-center p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors min-h-[60px]"
                 >
                   <span className="text-xl">💵</span>
+                  <span className="text-xs font-medium">PAY WITH</span>
                   <span className="text-sm font-medium">CASH</span>
                 </button>
                 <button
@@ -994,13 +1014,15 @@ const Checkout = () => {
                   className="flex flex-col items-center justify-center p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors min-h-[60px]"
                 >
                   <span className="text-xl">💳</span>
+                  <span className="text-xs font-medium">PAY WITH</span>
                   <span className="text-sm font-medium">CARD</span>
                 </button>
                 <button
                   onClick={() => handlePayment("Other")}
                   className="flex flex-col items-center justify-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors min-h-[60px]"
                 >
-                  <span className="text-xl">🎯</span>
+                  <span className="text-xl">💰</span>
+                  <span className="text-xs font-medium">PAY WITH</span>
                   <span className="text-sm font-medium">OTHER</span>
                 </button>
               </div>
@@ -1058,11 +1080,72 @@ const Checkout = () => {
         onConfirm={handleDeleteConfirm}
       />
 
+      <BarcodeScanConfirmModal
+        isOpen={barcodeScanConfirmModalOpen}
+        onClose={() => {
+          setBarcodeScanConfirmModalOpen(false);
+          setScannedProduct(null);
+          setScannedBarcode("");
+        }}
+        product={scannedProduct}
+        scannedBarcode={scannedBarcode}
+        isNewProduct={!scannedProduct}
+        onSaveAndAddToCart={(product) => {
+          if (canAddToCart(product)) {
+            addToCart(product, 1);
+            setLastScannedItem(product);
+            setTimeout(() => setLastScannedItem(null), 2000);
+            addNotification({
+              type: "success",
+              message: `Added ${product.name} to cart`,
+              autoClose: true,
+            });
+          } else {
+            addNotification({
+              type: "error",
+              message: `Cannot add ${product.name} - insufficient stock`,
+              autoClose: true,
+            });
+          }
+          setBarcodeScanConfirmModalOpen(false);
+          setScannedProduct(null);
+          setScannedBarcode("");
+        }}
+        onJustSave={(product) => {
+          addNotification({
+            type: "success",
+            message: `Product ${product.name} saved to inventory`,
+            autoClose: true,
+          });
+          setBarcodeScanConfirmModalOpen(false);
+          setScannedProduct(null);
+          setScannedBarcode("");
+        }}
+        onCreateAndAddToCart={(barcode) => {
+          // For new products, open the QuickAddProductModal with cart option
+          setScannedBarcode(barcode);
+          setShouldAddToCart(true);
+          setBarcodeScanConfirmModalOpen(false);
+          setQuickAddModalOpen(true);
+        }}
+        onJustCreate={(barcode) => {
+          // For new products, open the QuickAddProductModal without cart option
+          setScannedBarcode(barcode);
+          setShouldAddToCart(false);
+          setBarcodeScanConfirmModalOpen(false);
+          setQuickAddModalOpen(true);
+        }}
+      />
+
       <QuickAddProductModal
         isOpen={quickAddModalOpen}
-        onClose={() => setQuickAddModalOpen(false)}
+        onClose={() => {
+          setQuickAddModalOpen(false);
+          setShouldAddToCart(false);
+        }}
         scannedBarcode={scannedBarcode}
         onProductAdded={handleProductAdded}
+        addToCart={shouldAddToCart}
       />
     </div>
   );

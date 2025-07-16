@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useProducts } from "../hooks/useProducts";
 import { useNotifications } from "../hooks/useNotifications";
+import { useCart } from "../hooks/useCart";
 import useBarcodeScanner from "../hooks/useBarcodeScanner";
 import ProductSearch from "../components/ui/ProductSearch";
 import QuickAddProductModal from "../components/ui/QuickAddProductModal";
 import ProductManagementModal from "../components/ui/ProductManagementModal";
+import BarcodeScanConfirmModal from "../components/ui/BarcodeScanConfirmModal";
 import { Product } from "../services/productsService";
 
 interface ProductFilters {
@@ -27,6 +29,7 @@ const Products: React.FC = () => {
   } = useProducts();
 
   const { addNotification } = useNotifications();
+  const { addToCart, canAddToCart } = useCart();
 
   const [filters, setFilters] = useState<ProductFilters>({
     category: null,
@@ -40,6 +43,10 @@ const Products: React.FC = () => {
   const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
   const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string>("");
+  const [barcodeScanConfirmModalOpen, setBarcodeScanConfirmModalOpen] =
+    useState(false);
+  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [shouldAddToCart, setShouldAddToCart] = useState(false);
 
   // Barcode scanner integration for product management
   const handleBarcodeScanned = async (barcode: string) => {
@@ -64,10 +71,8 @@ const Products: React.FC = () => {
           product.id
         );
 
-        // Track as recently viewed
+        // Existing product - show management modal (old behavior)
         addToRecentlyViewed(product);
-
-        // Show product management modal for comprehensive management
         setSelectedProduct(product);
         setIsManagementModalOpen(true);
 
@@ -78,9 +83,9 @@ const Products: React.FC = () => {
         });
       } else {
         console.log("❌ [Products] Product not found for barcode:", barcode);
-        // Product not found - show QuickAddProductModal to create it
+        // New product - show confirmation modal with options
         setScannedBarcode(barcode);
-        setQuickAddModalOpen(true);
+        setBarcodeScanConfirmModalOpen(true);
       }
     } catch (error) {
       console.error("🚨 [Products] Error processing barcode:", error);
@@ -743,9 +748,76 @@ const Products: React.FC = () => {
         onClose={() => {
           setQuickAddModalOpen(false);
           setScannedBarcode("");
+          setShouldAddToCart(false);
         }}
         scannedBarcode={scannedBarcode}
         onProductAdded={handleProductAdded}
+        addToCart={shouldAddToCart}
+      />
+
+      {/* Barcode Scan Confirmation Modal */}
+      <BarcodeScanConfirmModal
+        isOpen={barcodeScanConfirmModalOpen}
+        onClose={() => {
+          setBarcodeScanConfirmModalOpen(false);
+          setScannedProduct(null);
+          setScannedBarcode("");
+        }}
+        product={scannedProduct}
+        scannedBarcode={scannedBarcode}
+        isNewProduct={!scannedProduct}
+        onSaveAndAddToCart={(product) => {
+          // Track as recently viewed
+          addToRecentlyViewed(product);
+
+          // Add to cart if possible
+          if (canAddToCart(product)) {
+            addToCart(product, 1);
+            addNotification({
+              type: "success",
+              message: `${product.name} added to cart and saved to inventory`,
+              autoClose: true,
+            });
+          } else {
+            addNotification({
+              type: "error",
+              message: `Cannot add ${product.name} to cart - insufficient stock`,
+              autoClose: true,
+            });
+          }
+
+          setBarcodeScanConfirmModalOpen(false);
+          setScannedProduct(null);
+          setScannedBarcode("");
+        }}
+        onJustSave={(product) => {
+          // Track as recently viewed
+          addToRecentlyViewed(product);
+
+          addNotification({
+            type: "success",
+            message: `Product ${product.name} saved to inventory`,
+            autoClose: true,
+          });
+
+          setBarcodeScanConfirmModalOpen(false);
+          setScannedProduct(null);
+          setScannedBarcode("");
+        }}
+        onCreateAndAddToCart={(barcode) => {
+          // For new products, open the QuickAddProductModal with cart option
+          setScannedBarcode(barcode);
+          setShouldAddToCart(true);
+          setBarcodeScanConfirmModalOpen(false);
+          setQuickAddModalOpen(true);
+        }}
+        onJustCreate={(barcode) => {
+          // For new products, open the QuickAddProductModal without cart option
+          setScannedBarcode(barcode);
+          setShouldAddToCart(false);
+          setBarcodeScanConfirmModalOpen(false);
+          setQuickAddModalOpen(true);
+        }}
       />
 
       {/* Development Testing Section */}

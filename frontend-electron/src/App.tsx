@@ -49,9 +49,13 @@ function App() {
       case "sales":
         return <Sales />;
       case "checkout":
-        return <Checkout />;
+        return <Checkout onNavigate={(page) => setCurrentPage(page as Page)} />;
       case "checkout-summary":
-        return <CheckoutSummary />;
+        return (
+          <CheckoutSummary
+            onNavigate={(page) => setCurrentPage(page as Page)}
+          />
+        );
       case "reports":
         return <Reports />;
       case "demo":

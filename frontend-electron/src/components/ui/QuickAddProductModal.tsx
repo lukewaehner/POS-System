@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Product } from "../../services/productsService";
 import { useProducts } from "../../hooks/useProducts";
+import { useCart } from "../../hooks/useCart";
 
 interface QuickAddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   scannedBarcode: string;
   onProductAdded: (product: Product) => void;
+  addToCart?: boolean; // Optional flag to add product to cart after creation
 }
 
 interface ProductFormData {
@@ -23,8 +25,10 @@ const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({
   onClose,
   scannedBarcode,
   onProductAdded,
+  addToCart = false,
 }) => {
   const { createProduct } = useProducts();
+  const { addToCart: addProductToCart, canAddToCart } = useCart();
   const modalRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,6 +171,11 @@ const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({
       });
 
       if (createdProduct) {
+        // Add to cart if requested
+        if (addToCart && canAddToCart(createdProduct)) {
+          addProductToCart(createdProduct, 1);
+        }
+
         onProductAdded(createdProduct);
         onClose();
       } else {

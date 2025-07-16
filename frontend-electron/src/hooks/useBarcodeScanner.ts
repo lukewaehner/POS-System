@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface BarcodeScannerOptions {
   onBarcodeScanned?: (barcode: string) => void;
   onError?: (error: string) => void;
   minBarcodeLength?: number;
   maxBarcodeLength?: number;
-  scanTimeout?: number; // ms between keystrokes to consider as separate scan
+  timeThreshold?: number; // ms between keystrokes to consider as continuous scan
   enableLogging?: boolean;
   preventDefaultKeyEvents?: boolean;
+  designatedScanClass?: string; // CSS class for designated scan fields
 }
 
 export interface BarcodeScannerState {
@@ -19,15 +20,137 @@ export interface BarcodeScannerState {
   lastScanTime: number;
 }
 
+// Check if we should prevent text entry into form fields
+const shouldPreventTextEntry = (
+  event: KeyboardEvent,
+  designatedScanClass?: string
+): boolean => {
+  const activeElement = document.activeElement;
+
+  if (!activeElement) return false;
+
+  // Allow text entry if in designated scan field
+  if (
+    designatedScanClass &&
+    activeElement.classList.contains(designatedScanClass)
+  ) {
+    return false;
+  }
+
+  // Allow text entry in search inputs (don't prevent barcode scanner from working, but allow typing)
+  if (activeElement instanceof HTMLInputElement) {
+    const inputType = activeElement.type?.toLowerCase();
+    const placeholder = activeElement.placeholder?.toLowerCase();
+    const className = activeElement.className?.toLowerCase();
+
+    // Allow typing in search inputs
+    if (
+      inputType === "search" ||
+      placeholder?.includes("search") ||
+      className?.includes("search") ||
+      activeElement.getAttribute("role") === "searchbox"
+    ) {
+      return false;
+    }
+  }
+
+  // Prevent text entry in regular form fields
+  const isInputField = ["INPUT", "TEXTAREA", "SELECT"].includes(
+    activeElement.tagName
+  );
+  const isContentEditable =
+    activeElement.hasAttribute("contenteditable") &&
+    activeElement.getAttribute("contenteditable") !== "false";
+  const isTextboxRole = activeElement.getAttribute("role") === "textbox";
+
+  return isInputField || isContentEditable || isTextboxRole;
+};
+
+// Enhanced barcode validation
+const isValidBarcode = (
+  barcode: string,
+  minLength: number,
+  maxLength: number
+): boolean => {
+  // Basic length validation
+  if (barcode.length < minLength || barcode.length > maxLength) {
+    return false;
+  }
+
+  // Check for valid characters (digits and common barcode characters)
+  const validPattern = /^[0-9A-Z\-\.\ ]+$/i;
+  if (!validPattern.test(barcode)) {
+    return false;
+  }
+
+  // For now, skip strict checksum validation to be more lenient
+  // This can be made configurable if needed
+  // if (barcode.length === 13 || barcode.length === 12) {
+  //   return validateEANChecksum(barcode);
+  // }
+
+  return true;
+};
+
+// EAN/UPC checksum validation (currently not used but kept for future)
+const validateEANChecksum = (barcode: string): boolean => {
+  const digits = barcode.replace(/[^0-9]/g, "");
+  if (digits.length !== 12 && digits.length !== 13) return true; // Skip if not EAN/UPC
+
+  let sum = 0;
+  const checkDigit = parseInt(digits.slice(-1));
+  const codeDigits = digits.slice(0, -1);
+
+  // UPC-A/EAN-13 checksum calculation
+  for (let i = 0; i < codeDigits.length; i++) {
+    const digit = parseInt(codeDigits[i]);
+    // For UPC-A (12 digits): odd positions * 3, even positions * 1
+    // For EAN-13 (13 digits): odd positions * 1, even positions * 3
+    const multiplier =
+      digits.length === 12 ? (i % 2 === 0 ? 3 : 1) : i % 2 === 0 ? 1 : 3;
+    sum += digit * multiplier;
+  }
+
+  const calculatedCheck = (10 - (sum % 10)) % 10;
+  return calculatedCheck === checkDigit;
+};
+
+// Intelligent scan pattern detection
+const detectScanPattern = (
+  keyTimings: number[],
+  timeThreshold: number
+): boolean => {
+  if (keyTimings.length < 3) return false;
+
+  let rapidKeystrokes = 0;
+  let averageInterval = 0;
+
+  for (let i = 1; i < keyTimings.length; i++) {
+    const interval = keyTimings[i] - keyTimings[i - 1];
+    averageInterval += interval;
+
+    if (interval < timeThreshold) {
+      rapidKeystrokes++;
+    }
+  }
+
+  averageInterval /= keyTimings.length - 1;
+
+  // Consider it a scan if most intervals are rapid and average is below threshold
+  const rapidRatio = rapidKeystrokes / (keyTimings.length - 1);
+  return rapidRatio > 0.7 && averageInterval < timeThreshold;
+};
+
 export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
   const {
     onBarcodeScanned,
     onError,
     minBarcodeLength = 8,
     maxBarcodeLength = 20,
-    scanTimeout = 50, // Shorter timeout for better scanner detection
+    timeThreshold = 100, // 100ms between keystrokes
     enableLogging = false,
     preventDefaultKeyEvents = true,
+    designatedScanClass = "barcode-input",
   } = options;
 
   // Use refs to store callback functions to prevent re-renders
@@ -43,8 +166,6 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
     onErrorRef.current = onError;
   }, [onError]);
 
-  // Hook initialization logging removed - no longer needed
-
   const [state, setState] = useState<BarcodeScannerState>({
     isScanning: false,
     lastScannedBarcode: null,
@@ -54,7 +175,7 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
     lastScanTime: 0,
   });
 
-  const barcodeBuffer = useRef<string>("");
+  const scanBuffer = useRef<string>("");
   const lastKeystroke = useRef<number>(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessing = useRef<boolean>(false);
@@ -63,7 +184,7 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
   const log = useCallback(
     (message: string, data?: any) => {
       if (enableLogging) {
-        console.log(`[BarcodeScanner] ${message}`, data || "");
+        console.log(`[SmartBarcodeScanner] ${message}`, data || "");
       }
     },
     [enableLogging]
@@ -78,7 +199,7 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
   }, [updateState]);
 
   const resetScanner = useCallback(() => {
-    barcodeBuffer.current = "";
+    scanBuffer.current = "";
     lastKeystroke.current = 0;
     isProcessing.current = false;
     keyTimings.current = [];
@@ -89,49 +210,26 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
     updateState({ isScanning: false, error: null });
   }, [updateState]);
 
-  const isLikelyBarcodeScanner = useCallback(() => {
-    // Analyze the timing pattern to determine if this looks like a barcode scanner
-    if (keyTimings.current.length < 3) return false;
-
-    // Calculate average time between keystrokes
-    const intervals = [];
-    for (let i = 1; i < keyTimings.current.length; i++) {
-      intervals.push(keyTimings.current[i] - keyTimings.current[i - 1]);
-    }
-
-    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-    const maxInterval = Math.max(...intervals);
-
-    // Barcode scanners typically have:
-    // - Very consistent timing (low variation)
-    // - Fast input (under 100ms between chars)
-    // - No pauses longer than 200ms
-    const isConsistent = maxInterval < 200;
-    const isFast = avgInterval < 100;
-
-    log(
-      `Timing analysis: avg=${avgInterval.toFixed(
-        1
-      )}ms, max=${maxInterval}ms, fast=${isFast}, consistent=${isConsistent}`
-    );
-
-    return isConsistent && isFast;
-  }, [log]);
-
-  const processBarcodeInput = useCallback(
+  const processBarcode = useCallback(
     (barcode: string) => {
       if (isProcessing.current) return;
 
       isProcessing.current = true;
-      log("Processing barcode:", barcode);
+      const trimmedBarcode = barcode.trim();
 
-      // Validate barcode length
-      if (
-        barcode.length < minBarcodeLength ||
-        barcode.length > maxBarcodeLength
-      ) {
-        const error = `Invalid barcode length: ${barcode.length} (expected ${minBarcodeLength}-${maxBarcodeLength})`;
+      log("Processing barcode:", trimmedBarcode);
+
+      // Enhanced barcode validation
+      if (!isValidBarcode(trimmedBarcode, minBarcodeLength, maxBarcodeLength)) {
+        const error = `Invalid barcode: ${trimmedBarcode} (length: ${trimmedBarcode.length}, expected: ${minBarcodeLength}-${maxBarcodeLength})`;
         log(error);
+        log("Barcode validation details:", {
+          barcode: trimmedBarcode,
+          length: trimmedBarcode.length,
+          minLength: minBarcodeLength,
+          maxLength: maxBarcodeLength,
+          validChars: /^[0-9A-Z\-\.\ ]+$/i.test(trimmedBarcode),
+        });
         onErrorRef.current?.(error);
         updateState({ error, isScanning: false });
         isProcessing.current = false;
@@ -140,10 +238,9 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
 
       // Prevent duplicate scans within 1 second
       setState((prev) => {
-        if (prev.lastScannedBarcode === barcode) {
+        if (prev.lastScannedBarcode === trimmedBarcode) {
           const timeSinceLastScan = Date.now() - prev.lastScanTime;
           if (timeSinceLastScan < 1000) {
-            // 1 second debounce
             log("Duplicate barcode scan ignored (debounced)");
             isProcessing.current = false;
             return prev;
@@ -152,7 +249,7 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
 
         return {
           ...prev,
-          lastScannedBarcode: barcode,
+          lastScannedBarcode: trimmedBarcode,
           scanCount: prev.scanCount + 1,
           isScanning: false,
           error: null,
@@ -162,7 +259,7 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
 
       // Notify callback
       try {
-        onBarcodeScannerRef.current?.(barcode);
+        onBarcodeScannerRef.current?.(trimmedBarcode);
         log("Barcode scan successful");
       } catch (error) {
         const errorMessage =
@@ -184,32 +281,15 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      // Detect if this looks like the start of a barcode scan
-      const isFirstDigitOfPotentialScan =
-        event.key.length === 1 &&
-        /[0-9]/.test(event.key) &&
-        barcodeBuffer.current.length === 0;
+      const currentTime = Date.now();
+      const timeDiff = currentTime - lastKeystroke.current;
 
-      // If we detect a potential barcode scan starting while an input is focused,
-      // blur the input and allow the scan to proceed
-      if (
-        isFirstDigitOfPotentialScan &&
-        (event.target instanceof HTMLInputElement ||
-          event.target instanceof HTMLTextAreaElement ||
-          event.target instanceof HTMLSelectElement)
-      ) {
-        log(
-          "Input field focused during scan start - blurring and allowing scan"
-        );
-        (event.target as HTMLElement).blur();
-        // Continue processing instead of returning
-      } else if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement ||
-        event.target instanceof HTMLSelectElement
-      ) {
-        // Still ignore if we're in the middle of a scan or it's not a digit
-        return;
+      // Reset buffer if too much time passed (not continuous scanning)
+      if (timeDiff > timeThreshold && scanBuffer.current.length > 0) {
+        log("Time threshold exceeded, clearing buffer");
+        scanBuffer.current = "";
+        keyTimings.current = [];
+        updateState({ isScanning: false });
       }
 
       // Ignore modifier keys and special keys
@@ -217,36 +297,30 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
         return;
       }
 
-      const currentTime = Date.now();
-      const timeSinceLastKey = currentTime - lastKeystroke.current;
-
-      // Barcode scanners typically send characters very quickly (under 50ms between chars)
-      // If more than 200ms has passed, this is likely manual typing, not a scanner
-      if (timeSinceLastKey > 200 && barcodeBuffer.current.length > 0) {
-        log("Manual typing detected, clearing buffer");
-        barcodeBuffer.current = "";
-        updateState({ isScanning: false });
-        return;
-      }
+      // Check if we should prevent text entry into form fields
+      const shouldPreventEntry = shouldPreventTextEntry(
+        event,
+        designatedScanClass
+      );
 
       lastKeystroke.current = currentTime;
 
       // Handle Enter key (end of barcode scan)
       if (event.key === "Enter") {
-        const barcode = barcodeBuffer.current.trim();
-        if (barcode && barcode.length >= minBarcodeLength) {
-          // Check if this looks like a barcode scanner based on timing
-          if (isLikelyBarcodeScanner()) {
-            if (preventDefaultKeyEvents) {
+        if (scanBuffer.current.length >= minBarcodeLength) {
+          // Check if this looks like a barcode scanner based on timing pattern
+          if (detectScanPattern(keyTimings.current, timeThreshold)) {
+            // Prevent default if in regular form field to avoid form submission
+            if (shouldPreventEntry) {
               event.preventDefault();
             }
-            log("Enter key detected, processing barcode:", barcode);
-            processBarcodeInput(barcode);
+            log("Enter key detected, processing barcode:", scanBuffer.current);
+            processBarcode(scanBuffer.current);
           } else {
-            log("Input doesn't look like barcode scanner, ignoring");
+            log("Input doesn't match scan pattern, ignoring");
           }
         }
-        barcodeBuffer.current = "";
+        scanBuffer.current = "";
         keyTimings.current = [];
         updateState({ isScanning: false });
         return;
@@ -256,41 +330,42 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
       if (event.key.length === 1) {
         const char = event.key;
 
-        // Only accept digits and common barcode characters (more restrictive)
-        if (/[0-9]/.test(char)) {
+        // Accept alphanumeric characters and common barcode symbols
+        if (/[0-9A-Z\-\.\ ]/i.test(char)) {
           // Record keystroke timing
           keyTimings.current.push(currentTime);
 
-          // Only start capturing if this seems like rapid input (scanner-like)
-          if (barcodeBuffer.current.length === 0) {
-            // First character - start capturing
+          // Start scanning indication
+          if (scanBuffer.current.length === 0) {
             updateState({ isScanning: true, error: null });
             log("Started scanning barcode");
           }
 
-          if (preventDefaultKeyEvents) {
+          // Prevent text entry into regular form fields but allow designated scan fields
+          if (shouldPreventEntry) {
             event.preventDefault();
+            log("Prevented barcode text entry into form field");
           }
 
-          barcodeBuffer.current += char;
+          scanBuffer.current += char;
 
           // Set timeout to reset if no more input
           if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
           }
           timeoutRef.current = setTimeout(() => {
-            if (barcodeBuffer.current) {
+            if (scanBuffer.current) {
               log("Scan timeout, resetting buffer");
-              barcodeBuffer.current = "";
+              scanBuffer.current = "";
               keyTimings.current = [];
               updateState({ isScanning: false });
             }
-          }, scanTimeout * 5); // Shorter timeout for incomplete scans
+          }, timeThreshold * 2);
         } else {
-          // Non-digit character - this is likely manual typing
-          if (barcodeBuffer.current.length > 0) {
-            log("Non-digit character detected, clearing buffer");
-            barcodeBuffer.current = "";
+          // Invalid character - likely manual typing
+          if (scanBuffer.current.length > 0) {
+            log("Invalid character detected, clearing buffer");
+            scanBuffer.current = "";
             keyTimings.current = [];
             updateState({ isScanning: false });
           }
@@ -298,22 +373,21 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
       }
     },
     [
-      scanTimeout,
-      preventDefaultKeyEvents,
-      processBarcodeInput,
+      timeThreshold,
+      designatedScanClass,
+      processBarcode,
       updateState,
       log,
       minBarcodeLength,
-      isLikelyBarcodeScanner,
     ]
   );
 
-  // Setup event listeners - using a ref to store the handler to prevent re-renders
+  // Setup event listeners
   const handleKeyDownRef = useRef(handleKeyDown);
   handleKeyDownRef.current = handleKeyDown;
 
   useEffect(() => {
-    log("Setting up barcode scanner listeners");
+    log("Setting up smart barcode scanner listeners");
 
     // Create a stable reference to the handler
     const stableHandler = (event: KeyboardEvent) => {
@@ -323,17 +397,17 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
     // Add keyboard event listener
     document.addEventListener("keydown", stableHandler);
 
-    // Simulate scanner connection (in real implementation, you might check for USB devices)
+    // Simulate scanner connection
     updateState({ isConnected: true });
 
     return () => {
-      log("Cleaning up barcode scanner listeners");
+      log("Cleaning up smart barcode scanner listeners");
       document.removeEventListener("keydown", stableHandler);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [log, updateState]); // Minimal dependencies
+  }, [log, updateState]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -347,7 +421,7 @@ export const useBarcodeScanner = (options: BarcodeScannerOptions = {}) => {
     resetScanner,
     clearError,
     // Manual barcode input for testing
-    simulateBarcodeScan: processBarcodeInput,
+    simulateBarcodeScan: processBarcode,
   };
 };
 
