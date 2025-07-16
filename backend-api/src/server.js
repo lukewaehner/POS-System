@@ -196,6 +196,32 @@ const createApp = (database) => {
     });
   });
 
+  // Get all categories endpoint
+  app.get("/api/products/categories", (req, res) => {
+    const query = `
+      SELECT DISTINCT c.id, c.name, c.description, COUNT(p.id) as product_count
+      FROM categories c
+      LEFT JOIN products p ON c.id = p.category_id AND p.is_active = 1
+      GROUP BY c.id, c.name, c.description
+      ORDER BY c.name ASC
+    `;
+
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        console.error("Database error:", err.message);
+        res
+          .status(500)
+          .json({ error: "Failed to fetch categories", details: err.message });
+      } else {
+        res.json({
+          data: rows,
+          count: rows.length,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  });
+
   // Create new product
   app.post("/api/products", (req, res) => {
     const {

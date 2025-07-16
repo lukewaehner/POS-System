@@ -1,11 +1,14 @@
-// API Client and utilities
-export { api, apiUtils, handleApiError } from "./api";
-export type { ApiResponse, ApiErrorResponse } from "./api";
-
 // Products Service
 export { ProductsService } from "./productsService";
+
+// API Client and utilities
+export { api } from "./api";
+export { handleApiError } from "./api";
+export type { ApiResponse, ApiErrorResponse } from "./api";
+
 export type {
   Product,
+  StockMovement,
   CreateProductPayload,
   UpdateProductPayload,
   ProductSearchParams,

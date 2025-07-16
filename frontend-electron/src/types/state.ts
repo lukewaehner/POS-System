@@ -1,5 +1,13 @@
 import { Product } from "../services/productsService";
 
+// Category interface
+export interface Category {
+  id: number;
+  name: string;
+  description?: string;
+  product_count: number;
+}
+
 // Cart item interface
 export interface CartItem {
   id: number;
@@ -45,11 +53,12 @@ export interface AppState {
   // Products cache
   products: {
     items: Product[];
-    categories: string[];
+    categories: Category[];
     searchQuery: string;
     selectedCategory: string | null;
     isLoading: boolean;
     lastFetched: number | null;
+    recentlyViewed: Product[];
   };
 
   // User state
@@ -78,14 +87,21 @@ export type AppAction =
     }
   | { type: "CLEAR_CART" }
   | { type: "CALCULATE_TOTALS" }
+  | { type: "RESTORE_CART"; payload: { cart: AppState["cart"] } }
+  | {
+      type: "VALIDATE_CART_ITEM";
+      payload: { productId: number; currentStock: number };
+    }
 
   // Product actions
   | { type: "SET_PRODUCTS"; payload: { products: Product[] } }
-  | { type: "SET_CATEGORIES"; payload: { categories: string[] } }
+  | { type: "SET_CATEGORIES"; payload: { categories: Category[] } }
   | { type: "SET_PRODUCTS_LOADING"; payload: { isLoading: boolean } }
   | { type: "SET_SEARCH_QUERY"; payload: { query: string } }
   | { type: "SET_SELECTED_CATEGORY"; payload: { category: string | null } }
   | { type: "UPDATE_PRODUCT"; payload: { product: Product } }
+  | { type: "REMOVE_PRODUCT"; payload: { productId: number } }
+  | { type: "ADD_RECENTLY_VIEWED"; payload: { product: Product } }
 
   // User actions
   | { type: "SET_USER"; payload: { user: User } }

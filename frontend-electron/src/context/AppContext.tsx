@@ -23,6 +23,7 @@ const initialState: AppState = {
     selectedCategory: null,
     isLoading: false,
     lastFetched: null,
+    recentlyViewed: [],
   },
   user: {
     name: "",
@@ -136,6 +137,41 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       localStorage.removeItem("pos-user-session");
     }
   }, [state.user]);
+
+  // Load cart from localStorage on app start
+  useEffect(() => {
+    const savedCart = localStorage.getItem("pos-cart");
+    if (savedCart) {
+      try {
+        const cart = JSON.parse(savedCart);
+        // Validate cart structure before restoring
+        if (cart && Array.isArray(cart.items)) {
+          dispatch({
+            type: "RESTORE_CART",
+            payload: { cart },
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load cart from localStorage:", error);
+        // Clear invalid cart data
+        localStorage.removeItem("pos-cart");
+      }
+    }
+  }, []);
+
+  // Save cart to localStorage when it changes (debounced)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (state.cart.items.length > 0) {
+        localStorage.setItem("pos-cart", JSON.stringify(state.cart));
+      } else {
+        // Clear cart from localStorage when empty
+        localStorage.removeItem("pos-cart");
+      }
+    }, 500); // 500ms debounce to avoid excessive saves
+
+    return () => clearTimeout(timeoutId);
+  }, [state.cart]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

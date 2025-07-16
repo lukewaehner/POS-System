@@ -1,7 +1,7 @@
 import { api, ApiResponse, handleApiError, ApiErrorResponse } from "./api";
 import { AxiosError } from "axios";
 
-// Product interface (matches backend schema)
+// Product interface
 export interface Product {
   id: number;
   name: string;
@@ -17,6 +17,22 @@ export interface Product {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+// Stock movement interface for tracking inventory changes
+export interface StockMovement {
+  id: number;
+  product_id: number;
+  type: "sale" | "restock" | "adjustment" | "return" | "damage" | "transfer";
+  quantity: number;
+  previous_stock: number;
+  new_stock: number;
+  reason: string;
+  timestamp: string;
+  user_id?: number;
+  user?: string;
+  reference_id?: string; // For linking to sales, purchase orders, etc.
+  notes?: string;
 }
 
 // Product creation/update payload (without auto-generated fields)
@@ -467,10 +483,10 @@ export class ProductsService {
   /**
    * Get all unique categories
    */
-  static async getCategories(): Promise<ProductServiceResponse<string[]>> {
+  static async getCategories(): Promise<ProductServiceResponse<any[]>> {
     try {
       // This might need to be adjusted based on your backend implementation
-      const response = await api.get<string[]>("/products/categories");
+      const response = await api.get<any>("/products/categories");
 
       return {
         data: response.data.data || response.data,
@@ -494,7 +510,14 @@ export class ProductsService {
               .map((product) => product.category_name || product.category)
               .filter((category) => category && category.trim() !== "")
           )
-        ) as string[];
+        ).map((name, index) => ({
+          id: index + 1,
+          name,
+          description: "",
+          product_count: productsResult.data.filter(
+            (p) => (p.category_name || p.category) === name
+          ).length,
+        }));
 
         console.log("✅ getCategories - Extracted categories:", categories);
         return {

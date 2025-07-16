@@ -6,12 +6,13 @@ import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import Sales from "./pages/Sales";
 import Checkout from "./pages/Checkout";
+import CheckoutSummary from "./pages/CheckoutSummary";
 import Reports from "./pages/Reports";
 import ComponentDemo from "./pages/ComponentDemo";
+import BarcodeScannerDebug from "./components/debug/BarcodeScannerDebug";
 
 // Import layout components
 import Header from "./components/layout/Header";
-import Sidebar from "./components/layout/Sidebar";
 
 // Import state management
 import { AppProvider } from "./hooks";
@@ -21,11 +22,23 @@ type Page =
   | "products"
   | "sales"
   | "checkout"
+  | "checkout-summary"
   | "reports"
-  | "demo";
+  | "demo"
+  | "debug";
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>("dashboard");
+
+  // Define pages that should have outside margins
+  const pagesWithMargins: Page[] = [
+    "dashboard",
+    "products",
+    "sales",
+    "reports",
+    "demo",
+    "debug",
+  ];
 
   const renderPage = () => {
     switch (currentPage) {
@@ -37,120 +50,38 @@ function App() {
         return <Sales />;
       case "checkout":
         return <Checkout />;
+      case "checkout-summary":
+        return <CheckoutSummary />;
       case "reports":
         return <Reports />;
       case "demo":
         return <ComponentDemo />;
+      case "debug":
+        return <BarcodeScannerDebug />;
       default:
         return <Dashboard />;
     }
   };
 
+  const shouldHaveMargins = pagesWithMargins.includes(currentPage);
+
+  const pageContent = renderPage();
+
+  // Conditionally wrap with margins
+  const wrappedContent = shouldHaveMargins ? (
+    <div className="p-4">{pageContent}</div>
+  ) : (
+    pageContent
+  );
+
   return (
     <AppProvider>
       <div className="h-screen flex flex-col bg-gray-100">
         {/* Header */}
-        <Header />
+        <Header currentPage={currentPage} onPageChange={setCurrentPage} />
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar Navigation */}
-          <aside className="w-64 bg-white shadow-sm border-r border-gray-200">
-            <nav className="p-4 space-y-2">
-              <button
-                onClick={() => setCurrentPage("dashboard")}
-                className={`flex items-center space-x-3 px-4 py-4 rounded-lg text-left w-full transition-colors duration-200 text-lg font-medium ${
-                  currentPage === "dashboard"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <span className="text-2xl">🏠</span>
-                <span>Dashboard</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentPage("products")}
-                className={`flex items-center space-x-3 px-4 py-4 rounded-lg text-left w-full transition-colors duration-200 text-lg font-medium ${
-                  currentPage === "products"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <span className="text-2xl">📦</span>
-                <span>Products</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentPage("checkout")}
-                className={`flex items-center space-x-3 px-4 py-4 rounded-lg text-left w-full transition-colors duration-200 text-lg font-medium ${
-                  currentPage === "checkout"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <span className="text-2xl">🛒</span>
-                <span>Checkout</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentPage("sales")}
-                className={`flex items-center space-x-3 px-4 py-4 rounded-lg text-left w-full transition-colors duration-200 text-lg font-medium ${
-                  currentPage === "sales"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <span className="text-2xl">💰</span>
-                <span>Sales</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentPage("reports")}
-                className={`flex items-center space-x-3 px-4 py-4 rounded-lg text-left w-full transition-colors duration-200 text-lg font-medium ${
-                  currentPage === "reports"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <span className="text-2xl">📊</span>
-                <span>Reports</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentPage("demo")}
-                className={`flex items-center space-x-3 px-4 py-4 rounded-lg text-left w-full transition-colors duration-200 text-lg font-medium ${
-                  currentPage === "demo"
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <span className="text-2xl">🧪</span>
-                <span>UI Demo</span>
-              </button>
-            </nav>
-
-            {/* Quick Actions */}
-            <div className="p-4 border-t border-gray-200 mt-8">
-              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-                Quick Actions
-              </h3>
-              <div className="space-y-2">
-                <button className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
-                  💳 Open Cash Drawer
-                </button>
-                <button className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
-                  🖨️ Test Print
-                </button>
-                <button className="w-full text-left px-4 py-3 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
-                  ⚙️ Settings
-                </button>
-              </div>
-            </div>
-          </aside>
-
-          {/* Main Content Area */}
-          <main className="flex-1 overflow-y-auto p-4">{renderPage()}</main>
-        </div>
+        {/* Main Content Area - Full Width */}
+        <main className="flex-1 overflow-y-auto">{wrappedContent}</main>
       </div>
     </AppProvider>
   );

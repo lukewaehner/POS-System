@@ -223,6 +223,142 @@ export const useProducts = () => {
     loadProducts(true); // Refresh with no filters
   }, [dispatch, loadProducts]);
 
+  // Create a new product
+  const createProduct = useCallback(
+    async (productData: {
+      name: string;
+      barcode: string;
+      price: number;
+      stock_quantity: number;
+      category?: string;
+      description?: string;
+    }): Promise<Product | null> => {
+      try {
+        const productResponse = await ProductsService.createProduct(
+          productData
+        );
+
+        if (productResponse.success && productResponse.data) {
+          // Add the new product to the local state
+          dispatch({
+            type: "UPDATE_PRODUCT",
+            payload: { product: productResponse.data },
+          });
+
+          // Show success notification
+          dispatch({
+            type: "ADD_NOTIFICATION",
+            payload: {
+              notification: {
+                type: "success",
+                message: `Product "${productData.name}" added successfully!`,
+                autoClose: true,
+              },
+            },
+          });
+
+          return productResponse.data;
+        } else {
+          throw new Error(productResponse.error || "Failed to create product");
+        }
+      } catch (error) {
+        console.error("Failed to create product:", error);
+
+        // Show error notification
+        dispatch({
+          type: "ADD_NOTIFICATION",
+          payload: {
+            notification: {
+              type: "error",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to create product",
+              autoClose: true,
+            },
+          },
+        });
+
+        return null;
+      }
+    },
+    [dispatch]
+  );
+
+  // Update an existing product
+  const updateProduct = useCallback(
+    async (
+      id: number,
+      productData: Partial<{
+        name: string;
+        barcode: string;
+        price: number;
+        stock_quantity: number;
+        category: string;
+        description: string;
+      }>
+    ): Promise<Product | null> => {
+      try {
+        const productResponse = await ProductsService.updateProduct(
+          id,
+          productData
+        );
+
+        if (productResponse.success && productResponse.data) {
+          // Update the product in the local state
+          dispatch({
+            type: "UPDATE_PRODUCT",
+            payload: { product: productResponse.data },
+          });
+
+          return productResponse.data;
+        } else {
+          throw new Error(productResponse.error || "Failed to update product");
+        }
+      } catch (error) {
+        console.error("Failed to update product:", error);
+        throw error;
+      }
+    },
+    [dispatch]
+  );
+
+  // Delete a product
+  const deleteProduct = useCallback(
+    async (id: number): Promise<boolean> => {
+      try {
+        const deleteResponse = await ProductsService.deleteProduct(id);
+
+        if (deleteResponse.success) {
+          // Remove the product from the local state
+          dispatch({
+            type: "REMOVE_PRODUCT",
+            payload: { productId: id },
+          });
+
+          return true;
+        } else {
+          throw new Error(deleteResponse.error || "Failed to delete product");
+        }
+      } catch (error) {
+        console.error("Failed to delete product:", error);
+        throw error;
+      }
+    },
+    [dispatch]
+  );
+
+  // Add product to recently viewed
+  const addToRecentlyViewed = useCallback(
+    (product: Product) => {
+      dispatch({
+        type: "ADD_RECENTLY_VIEWED",
+        payload: { product },
+      });
+    },
+    [dispatch]
+  );
+
   // Load products on mount if empty
   useEffect(() => {
     if (state.products.items.length === 0) {
@@ -238,6 +374,7 @@ export const useProducts = () => {
     selectedCategory: state.products.selectedCategory,
     isLoading: state.products.isLoading,
     lastFetched: state.products.lastFetched,
+    recentlyViewed: state.products.recentlyViewed,
 
     // Actions
     loadProducts,
@@ -246,5 +383,9 @@ export const useProducts = () => {
     getProductById,
     getProductByBarcode,
     clearFilters,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+    addToRecentlyViewed,
   };
 };

@@ -7,6 +7,7 @@ export { default as PaymentProcessingModal } from "./PaymentProcessingModal";
 export { default as LoadingSpinner } from "./LoadingSpinner";
 export { default as LoadingSkeleton } from "./LoadingSkeleton";
 export { default as ErrorMessage } from "./ErrorMessage";
+export { default as CartDisplay } from "./CartDisplay";
 
 // Re-export specialized components
 export {

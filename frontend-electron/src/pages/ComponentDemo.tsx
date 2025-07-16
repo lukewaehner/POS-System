@@ -11,11 +11,14 @@ import {
   ErrorMessage,
   NetworkErrorMessage,
   EmptyStateMessage,
+  CartDisplay,
   Product,
   PaymentStatus,
 } from "../components/ui";
 import ApiConnectionTest from "../components/ApiConnectionTest";
 import StateDemo from "../components/StateDemo";
+import CartValidationDemo from "../components/CartValidationDemo";
+import ProductSearchDemo from "../components/ProductSearchDemo";
 import { ProductsService } from "../services";
 
 const ComponentDemo: React.FC = () => {
@@ -400,6 +403,39 @@ const ComponentDemo: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Cart Display */}
+      <div className="card p-6">
+        <h2 className="text-xl font-semibold mb-4">Shopping Cart Display</h2>
+        <p className="text-gray-600 mb-4">
+          This component shows the current cart items with quantity controls and
+          remove functionality. Try adding items using the "State Management
+          Demo" section above to see it in action. Click on the cart to focus it
+          and try keyboard shortcuts!
+        </p>
+        <div className="max-w-2xl">
+          <CartDisplay
+            onProceedToCheckout={() => alert("Proceeding to checkout! 🛒")}
+          />
+        </div>
+      </div>
+
+      {/* Cart Validation & Persistence Demo */}
+      <div className="card p-6">
+        <h2 className="text-xl font-semibold mb-4">
+          Cart Validation, Persistence & Keyboard Shortcuts Demo
+        </h2>
+        <p className="text-gray-600 mb-4">
+          This demo shows the cart validation system, persistence features, and
+          keyboard shortcuts. Try adding different products to see validation in
+          action, refresh the page to test persistence, and use keyboard
+          shortcuts for efficient cart management.
+        </p>
+        <CartValidationDemo />
+      </div>
+
+      {/* Product Search Demo */}
+      <ProductSearchDemo />
 
       {/* Error Messages */}
       <div className="space-y-4">
