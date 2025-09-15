@@ -6,16 +6,16 @@ A comprehensive Point of Sale system designed for convenience stores, liquor sho
 
 ```
 pos-ecosystem/
-├── frontend-electron/         # 🖥️ Desktop POS Terminal (Electron + React)
-├── frontend-mobile/           # 📱 Mobile OCR Scanner (React Native)
-├── frontend-dashboard/        # 🌐 Admin Web Dashboard (Next.js)
-├── backend-api/               # 🚀 REST API Server (Node.js + Express)
-├── db/                        # 🗄️ Database Schema & Seeds
-├── printer-lib/               # 🖨️ Universal Printer Support
-├── payment-integrations/      # 💳 Stripe/Square Integration
-├── shared/                    # 🔧 Common Types & Utilities
-├── docs/                      # 📚 Documentation
-└── scripts/                   # 🔨 Build & Deploy Scripts
+├── frontend-electron/         # Desktop POS Terminal (Electron + React)
+├── frontend-mobile/           # Mobile OCR Scanner (React Native)
+├── frontend-dashboard/        # Admin Web Dashboard (Next.js)
+├── backend-api/               # REST API Server (Node.js + Express)
+├── db/                        # Database Schema & Seeds
+├── printer-lib/               # Universal Printer Support
+├── payment-integrations/      # Stripe/Square Integration
+├── shared/                    # Common Types & Utilities
+├── docs/                      # Documentation
+└── scripts/                   # Build & Deploy Scripts
 ```
 
 ## Quick Start
