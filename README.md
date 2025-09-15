@@ -1,8 +1,8 @@
-# 🧾 POS Ecosystem
+# POS Ecosystem
 
 A comprehensive Point of Sale system designed for convenience stores, liquor shops, and smoke shops.
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 pos-ecosystem/
@@ -18,7 +18,7 @@ pos-ecosystem/
 └── scripts/                   # 🔨 Build & Deploy Scripts
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -30,8 +30,8 @@ pos-ecosystem/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/pos-ecosystem.git
-cd pos-ecosystem
+git clone https://github.com/lukewaehner/pos-ecosystem.git
+cd POS-System
 
 # Install all dependencies
 npm run install:all
@@ -56,9 +56,7 @@ cd frontend-dashboard && npm run dev
 cd frontend-mobile && npm run start
 ```
 
-## 🎯 Features
-
-### Phase 1 - MVP ✅
+## Features
 
 - [x] Barcode inventory management
 - [x] Shopping cart & checkout
@@ -66,25 +64,25 @@ cd frontend-mobile && npm run start
 - [x] Basic sales reporting
 - [x] SQLite database
 
-### Phase 2 - Payments 🚧
+### Under Development
 
 - [ ] Stripe Terminal integration
 - [ ] Square SDK integration
 - [ ] Card reader support
 
-### Phase 3 - OCR System 📋
+### Under Development
 
 - [ ] Mobile invoice scanning
 - [ ] Google Vision OCR
 - [ ] Product matching & reorder suggestions
 
-### Phase 4 - Admin Dashboard 📊
+### Under Development
 
 - [ ] Web-based inventory management
 - [ ] Sales analytics & reporting
 - [ ] CSV export functionality
 
-### Phase 5 - Advanced Printing 🏷️
+### Under Development
 
 - [ ] Label printing system
 - [ ] Multi-printer support
@@ -113,15 +111,11 @@ npm run test                  # Run all tests
 npm run lint                  # Lint all code
 ```
 
-## 📋 Development Roadmap
-
-See [plan.mdc](./plan.mdc) for detailed development phases and task breakdowns.
-
-## 📊 Development Tracking
+## Development Tracking
 
 See [DEVELOPMENT_LOG.md](./DEVELOPMENT_LOG.md) for real-time progress tracking, time logs, and session notes.
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -145,7 +139,7 @@ GOOGLE_CLOUD_PROJECT_ID=your-project-id
 GOOGLE_APPLICATION_CREDENTIALS=path/to/credentials.json
 ```
 
-## 🏪 Store Type Configurations
+## Store Type Configurations
 
 | Store Type  | Key Features                     |
 | ----------- | -------------------------------- |
@@ -153,22 +147,6 @@ GOOGLE_APPLICATION_CREDENTIALS=path/to/credentials.json
 | Liquor      | Age verification, tax handling   |
 | Smoke Shop  | SKU tracking, compliance         |
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-For issues and questions:
-
-- 📧 Email: support@yourcompany.com
-- 🐛 Issues: [GitHub Issues](https://github.com/your-username/pos-ecosystem/issues)
-- 📖 Docs: [Documentation](./docs/)
